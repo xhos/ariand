@@ -17,18 +17,23 @@ func (w *wrappedWriter) WriteHeader(statusCode int) {
 	w.statusCode = statusCode
 }
 
-func Logging(logger *log.Logger) func(http.Handler) http.Handler {
+func Logging(logger *log.Logger) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
+			ww := &wrappedWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
-			wrapped := &wrappedWriter{
-				ResponseWriter: w,
-				statusCode:     http.StatusOK,
-			}
+			next.ServeHTTP(ww, r)
 
-			next.ServeHTTP(wrapped, r)
-			logger.Info(wrapped.statusCode, r.Method, r.URL.Path, time.Since(start))
+			logger.Info(
+				"http.request",
+				"status", ww.statusCode,
+				"method", r.Method,
+				"path", r.URL.Path,
+				"duration", time.Since(start),
+				"req_id", requestID(r.Context()),
+				"remote", r.RemoteAddr,
+			)
 		})
 	}
 }

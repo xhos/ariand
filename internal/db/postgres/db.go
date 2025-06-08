@@ -1,0 +1,64 @@
+package postgres
+
+import (
+	"ariand/internal/db"
+	"ariand/internal/db/postgres/queries"
+	"fmt"
+	"os"
+
+	"github.com/charmbracelet/log"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jmoiron/sqlx"
+)
+
+// DB holds the database connection and embeds all query types
+type DB struct {
+	*sqlx.DB
+	log *log.Logger
+
+	*queries.Accounts
+	*queries.Dashboard
+	*queries.Transactions
+}
+
+// statically assert that *DB satisfies the db.Store interface
+// this will cause a compile-time error if the interface is not fully implemented
+var _ db.Store = (*DB)(nil)
+
+func ensureSchema(db *sqlx.DB) error {
+	ddl, err := os.ReadFile("./internal/db/postgres/schema.sql")
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(string(ddl))
+	return err
+}
+
+// New creates a new DB connection
+func New(dsn string) (*DB, error) {
+	if dsn == "" {
+		return nil, fmt.Errorf("empty DSN")
+	}
+
+	conn, err := sqlx.Open("pgx", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("sqlx.Open: %w", err)
+	}
+
+	if err := conn.Ping(); err != nil {
+		return nil, err
+	}
+	if err := ensureSchema(conn); err != nil {
+		return nil, err
+	}
+
+	return &DB{
+		DB:           conn,
+		log:          log.WithPrefix("db"),
+		Accounts:     queries.NewAccounts(conn),
+		Dashboard:    queries.NewDashboard(conn),
+		Transactions: queries.NewTransactions(conn),
+	}, nil
+}
+
+func (db *DB) Close() error { return db.DB.Close() }
