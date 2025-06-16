@@ -1,4 +1,8 @@
-{
+{pkgs, ...}: {
+  packages = with pkgs; [
+    go-swag
+  ];
+
   languages.go.enable = true;
 
   scripts.run.exec = ''
@@ -7,6 +11,10 @@
 
   scripts.fmt.exec = ''
     go fmt ./...
+  '';
+
+  scripts.docs.exec = ''
+    swag init -g cmd/main.go
   '';
 
   git-hooks.hooks = {

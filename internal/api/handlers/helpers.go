@@ -17,3 +17,7 @@ func badRequest(w http.ResponseWriter, msg string) {
 func internalErr(w http.ResponseWriter) {
 	writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "server error"})
 }
+
+func notFound(w http.ResponseWriter) {
+	writeJSON(w, http.StatusNotFound, map[string]string{"error": "resource not found"})
+}

@@ -1,3 +1,12 @@
+// @title           Ariand API
+// @version         1.0
+// @description     backend for arian
+// @host            localhost:8080
+// @BasePath        /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and a valid API key.
 package main
 
 import (

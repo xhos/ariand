@@ -17,6 +17,13 @@ func Auth(logger *log.Logger) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token := r.Header.Get("Authorization")
 
+			// no auth on docs assets or JSON
+			if strings.HasPrefix(r.URL.Path, "/swagger/") ||
+				strings.HasPrefix(r.URL.Path, "/docs/") {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			if token == "" {
 				logger.Error(ErrUnauthorized)
 				http.Error(w, ErrUnauthorized.Error(), http.StatusUnauthorized)
