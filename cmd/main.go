@@ -1,7 +1,6 @@
 // @title           Ariand API
 // @version         1.0
 // @description     backend for arian
-// @host            localhost:8080
 // @BasePath        /
 // @securityDefinitions.apikey BearerAuth
 // @in header

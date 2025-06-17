@@ -35,7 +35,7 @@ func SetupRoutes(store db.Store) *http.ServeMux {
 
 	// docs
 	mux.Handle("/docs/", http.StripPrefix("/docs/", http.FileServer(http.Dir("docs"))))
-	mux.Handle("/swagger/", httpSwagger.Handler(httpSwagger.URL("http://localhost:8080/docs/swagger.json")))
+	mux.Handle("/swagger/", httpSwagger.Handler(httpSwagger.URL("/docs/swagger.json")))
 
 	// health check
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
