@@ -3,6 +3,7 @@ package handlers
 import (
 	_ "ariand/docs"
 	"ariand/internal/db"
+	"fmt"
 	"net/http"
 
 	httpSwagger "github.com/swaggo/http-swagger/v2"
@@ -39,6 +40,7 @@ func SetupRoutes(store db.Store) *http.ServeMux {
 	// health check
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
+		fmt.Fprintln(w, "ok")
 	})
 
 	return mux
