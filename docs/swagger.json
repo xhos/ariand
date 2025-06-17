@@ -6,7 +6,6 @@
         "contact": {},
         "version": "1.0"
     },
-    "host": "localhost:8080",
     "basePath": "/",
     "paths": {
         "/api/accounts": {
@@ -96,7 +95,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Defines a historical date and balance for an account. This anchor is the starting point for all subsequent balance calculations.",
+                "description": "Defines a true balance for an account at the current time. This anchor is the starting point for all balance calculations.",
                 "consumes": [
                     "application/json"
                 ],
@@ -106,7 +105,7 @@
                 "tags": [
                     "accounts"
                 ],
-                "summary": "Set account anchor",
+                "summary": "Set account anchor to now",
                 "parameters": [
                     {
                         "type": "integer",
@@ -116,7 +115,7 @@
                         "required": true
                     },
                     {
-                        "description": "Anchor Payload (date and balance)",
+                        "description": "Anchor Payload (balance only)",
                         "name": "payload",
                         "in": "body",
                         "required": true,
@@ -130,7 +129,7 @@
                         "description": "No Content"
                     },
                     "400": {
-                        "description": "invalid request payload or date format",
+                        "description": "invalid request payload",
                         "schema": {
                             "$ref": "#/definitions/handlers.HTTPError"
                         }
@@ -702,10 +701,6 @@
                 "balance": {
                     "type": "number",
                     "example": 1234.56
-                },
-                "date": {
-                    "type": "string",
-                    "example": "2025-06-15"
                 }
             }
         },

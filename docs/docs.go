@@ -102,7 +102,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Defines a historical date and balance for an account. This anchor is the starting point for all subsequent balance calculations.",
+                "description": "Defines a true balance for an account at the current time. This anchor is the starting point for all balance calculations.",
                 "consumes": [
                     "application/json"
                 ],
@@ -112,7 +112,7 @@ const docTemplate = `{
                 "tags": [
                     "accounts"
                 ],
-                "summary": "Set account anchor",
+                "summary": "Set account anchor to now",
                 "parameters": [
                     {
                         "type": "integer",
@@ -122,7 +122,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Anchor Payload (date and balance)",
+                        "description": "Anchor Payload (balance only)",
                         "name": "payload",
                         "in": "body",
                         "required": true,
@@ -136,7 +136,7 @@ const docTemplate = `{
                         "description": "No Content"
                     },
                     "400": {
-                        "description": "invalid request payload or date format",
+                        "description": "invalid request payload",
                         "schema": {
                             "$ref": "#/definitions/handlers.HTTPError"
                         }
@@ -708,10 +708,6 @@ const docTemplate = `{
                 "balance": {
                     "type": "number",
                     "example": 1234.56
-                },
-                "date": {
-                    "type": "string",
-                    "example": "2025-06-15"
                 }
             }
         },
@@ -733,7 +729,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8080",
+	Host:             "",
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Ariand API",

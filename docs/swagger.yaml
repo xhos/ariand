@@ -93,14 +93,10 @@ definitions:
       balance:
         example: 1234.56
         type: number
-      date:
-        example: "2025-06-15"
-        type: string
     type: object
   handlers.UpdateTransactionRequest:
     additionalProperties: {}
     type: object
-host: localhost:8080
 info:
   contact: {}
   description: backend for arian
@@ -161,15 +157,15 @@ paths:
     post:
       consumes:
       - application/json
-      description: Defines a historical date and balance for an account. This anchor
-        is the starting point for all subsequent balance calculations.
+      description: Defines a true balance for an account at the current time. This
+        anchor is the starting point for all balance calculations.
       parameters:
       - description: Account ID
         in: path
         name: id
         required: true
         type: integer
-      - description: Anchor Payload (date and balance)
+      - description: Anchor Payload (balance only)
         in: body
         name: payload
         required: true
@@ -181,7 +177,7 @@ paths:
         "204":
           description: No Content
         "400":
-          description: invalid request payload or date format
+          description: invalid request payload
           schema:
             $ref: '#/definitions/handlers.HTTPError'
         "404":
@@ -194,7 +190,7 @@ paths:
             $ref: '#/definitions/handlers.HTTPError'
       security:
       - BearerAuth: []
-      summary: Set account anchor
+      summary: Set account anchor to now
       tags:
       - accounts
   /api/accounts/{id}/balance:
