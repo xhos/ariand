@@ -14,5 +14,10 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /app/ariand ./cmd/main.
 FROM alpine:latest
 
 RUN apk --no-cache add curl ca-certificates
+
+WORKDIR /app
+
 COPY --from=builder /app/ariand /app/ariand
+COPY --from=builder /app/docs ./docs
+
 ENTRYPOINT ["/app/ariand"]
