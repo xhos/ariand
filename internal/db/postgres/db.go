@@ -3,8 +3,8 @@ package postgres
 import (
 	"ariand/internal/db"
 	"ariand/internal/db/postgres/queries"
+	_ "embed"
 	"fmt"
-	"os"
 
 	"github.com/charmbracelet/log"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -21,16 +21,15 @@ type DB struct {
 	*queries.Transactions
 }
 
+//go:embed schema.sql
+var schemaDDL string
+
 // statically assert that *DB satisfies the db.Store interface
 // this will cause a compile-time error if the interface is not fully implemented
 var _ db.Store = (*DB)(nil)
 
 func ensureSchema(db *sqlx.DB) error {
-	ddl, err := os.ReadFile("./internal/db/postgres/schema.sql")
-	if err != nil {
-		return err
-	}
-	_, err = db.Exec(string(ddl))
+	_, err := db.Exec(string(schemaDDL))
 	return err
 }
 
