@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS transactions (
   tx_direction  TEXT NOT NULL CHECK (tx_direction IN ('in','out')),
   tx_desc       TEXT,
   
+  balance_after NUMERIC(18,2) NOT NULL,
+
   category      TEXT,
   merchant      TEXT,
   user_notes    TEXT,
@@ -29,6 +31,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   foreign_currency TEXT,
   foreign_amount   NUMERIC(18,2),
   exchange_rate    NUMERIC(18,6)
+
 );
 
 CREATE INDEX IF NOT EXISTS idx_tx_account_date

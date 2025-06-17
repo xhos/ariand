@@ -17,7 +17,7 @@ func NewDashboard(db *sqlx.DB) *Dashboard {
 	return &Dashboard{db}
 }
 
-func (q *Transactions) GetDashboardBalance(ctx context.Context) (float64, error) {
+func (q *Dashboard) GetDashboardBalance(ctx context.Context) (float64, error) {
 	var v float64
 	err := q.db.GetContext(ctx, &v, `
 		SELECT SUM(a.anchor_balance + COALESCE(d.delta,0)) AS total_balance
@@ -34,7 +34,7 @@ func (q *Transactions) GetDashboardBalance(ctx context.Context) (float64, error)
 	return v, err
 }
 
-func (q *Transactions) GetDashboardDebt(ctx context.Context) (float64, error) {
+func (q *Dashboard) GetDashboardDebt(ctx context.Context) (float64, error) {
 	var v float64
 	err := q.db.GetContext(ctx, &v, `
 		SELECT COALESCE(SUM(a.anchor_balance + COALESCE(d.delta,0)),0) AS total_debt

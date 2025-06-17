@@ -53,8 +53,8 @@ func main() {
 	stack := middleware.CreateStack(
 		middleware.RequestID(),
 		middleware.Logging(logger.WithPrefix("http")),
-		middleware.RateLimit(),
 		middleware.Auth(logger.WithPrefix("auth")),
+		middleware.RateLimit(),
 	)
 
 	server := &http.Server{

@@ -8,7 +8,6 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"time"
 )
 
 type AccountHandler struct{ Store db.Store }
@@ -19,7 +18,6 @@ type HTTPError struct {
 }
 
 type SetAnchorRequest struct {
-	Date    string  `json:"date"    example:"2025-06-15"`
 	Balance float64 `json:"balance" example:"1234.56"`
 }
 
@@ -73,15 +71,15 @@ func (h *AccountHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 // SetAnchor godoc
-// @Summary      Set account anchor
-// @Description  Defines a historical date and balance for an account. This anchor is the starting point for all subsequent balance calculations.
+// @Summary      Set account anchor to now
+// @Description  Defines a true balance for an account at the current time. This anchor is the starting point for all balance calculations.
 // @Tags         accounts
 // @Accept       json
 // @Produce      json
 // @Param        id       path      int               true  "Account ID"
-// @Param        payload  body      SetAnchorRequest  true  "Anchor Payload (date and balance)"
+// @Param        payload  body      SetAnchorRequest  true  "Anchor Payload (balance only)"
 // @Success      204
-// @Failure      400      {object}  HTTPError "invalid request payload or date format"
+// @Failure      400      {object}  HTTPError "invalid request payload"
 // @Failure      404      {object}  HTTPError "account not found"
 // @Failure      500      {object}  HTTPError
 // @Router       /api/accounts/{id}/anchor [post]
@@ -95,14 +93,7 @@ func (h *AccountHandler) SetAnchor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dt, err := time.Parse("2006-01-02", in.Date)
-	if err != nil {
-		badRequest(w, "invalid date format, expected YYYY-MM-DD")
-		return
-	}
-
-	if err := h.Store.SetAccountAnchor(r.Context(), id, dt, in.Balance); err != nil {
-		// Note: Your DB layer should return a distinct error for not found vs. other errors
+	if err := h.Store.SetAccountAnchor(r.Context(), id, in.Balance); err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			notFound(w)
 			return

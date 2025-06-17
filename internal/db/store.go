@@ -39,6 +39,6 @@ type Store interface {
 	// Account methods
 	ListAccounts(ctx context.Context) ([]domain.Account, error)
 	GetAccount(ctx context.Context, id int64) (*domain.Account, error)
-	SetAccountAnchor(ctx context.Context, accountID int64, date time.Time, balance float64) error
+	SetAccountAnchor(ctx context.Context, accountID int64, balance float64) error
 	GetAccountBalance(ctx context.Context, accountID int64) (float64, error)
 }

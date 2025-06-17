@@ -3,8 +3,9 @@ package handlers
 import (
 	_ "ariand/docs"
 	"ariand/internal/db"
-	"github.com/swaggo/http-swagger/v2"
 	"net/http"
+
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 func SetupRoutes(store db.Store) *http.ServeMux {
@@ -23,7 +24,7 @@ func SetupRoutes(store db.Store) *http.ServeMux {
 	// dashboard
 	mux.Handle("GET /api/dashboard/balance", http.HandlerFunc(dash.Balance))
 	mux.Handle("GET /api/dashboard/debt", http.HandlerFunc(dash.Debt))
-	mux.Handle("GET /api/transactions/trends", http.HandlerFunc(dash.Trends))
+	mux.Handle("GET /api/dashboard/trends", http.HandlerFunc(dash.Trends))
 
 	// accounts
 	mux.Handle("GET    /api/accounts", http.HandlerFunc(acc.List))
@@ -34,6 +35,11 @@ func SetupRoutes(store db.Store) *http.ServeMux {
 	// docs
 	mux.Handle("/docs/", http.StripPrefix("/docs/", http.FileServer(http.Dir("docs"))))
 	mux.Handle("/swagger/", httpSwagger.Handler(httpSwagger.URL("http://localhost:8080/docs/swagger.json")))
+
+	// health check
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
 
 	return mux
 }
