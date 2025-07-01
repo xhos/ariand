@@ -73,6 +73,13 @@ definitions:
         example: 101
         type: integer
     type: object
+  handlers.Cursor:
+    properties:
+      date:
+        type: string
+      id:
+        type: integer
+    type: object
   handlers.DebtResponse:
     properties:
       debt:
@@ -87,6 +94,15 @@ definitions:
       message:
         example: internal server error
         type: string
+    type: object
+  handlers.ListTransactionsResponse:
+    properties:
+      next_cursor:
+        $ref: '#/definitions/handlers.Cursor'
+      transactions:
+        items:
+          $ref: '#/definitions/domain.Transaction'
+        type: array
     type: object
   handlers.SetAnchorRequest:
     properties:
@@ -299,16 +315,65 @@ paths:
       - dashboard
   /api/transactions:
     get:
-      description: Returns a list of transactions, with optional filtering by date
-        range.
+      description: Returns a paginated and filtered list of transactions, ideal for
+        infinite scrolling.
       parameters:
-      - description: Start date filter (YYYY-MM-DD)
+      - default: 25
+        description: Number of transactions to return per page
         in: query
-        name: start
+        name: limit
+        type: integer
+      - description: Cursor date from the previous page (RFC3339)
+        in: query
+        name: cursor_date
         type: string
-      - description: End date filter (YYYY-MM-DD)
+      - description: Cursor ID from the previous page
         in: query
-        name: end
+        name: cursor_id
+        type: integer
+      - description: Filter by start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Filter by end date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      - description: Filter by minimum transaction amount
+        in: query
+        name: amount_min
+        type: number
+      - description: Filter by maximum transaction amount
+        in: query
+        name: amount_max
+        type: number
+      - description: Filter by transaction direction ('in' or 'out')
+        in: query
+        name: direction
+        type: string
+      - description: Filter by a specific currency (e.g., 'USD')
+        in: query
+        name: currency
+        type: string
+      - description: Comma-separated list of categories to filter by
+        in: query
+        name: categories
+        type: string
+      - description: Search term for the merchant field (case-insensitive)
+        in: query
+        name: merchant
+        type: string
+      - description: Search term for the description field (case-insensitive)
+        in: query
+        name: description
+        type: string
+      - description: Filter by start time of day (HH:MM:SS)
+        in: query
+        name: time_start
+        type: string
+      - description: Filter by end time of day (HH:MM:SS)
+        in: query
+        name: time_end
         type: string
       produces:
       - application/json
@@ -316,11 +381,9 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/domain.Transaction'
-            type: array
+            $ref: '#/definitions/handlers.ListTransactionsResponse'
         "400":
-          description: invalid date format
+          description: invalid query parameter
           schema:
             $ref: '#/definitions/handlers.HTTPError'
         "500":

@@ -7,8 +7,19 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
+
+type Cursor struct {
+	ID   int64     `json:"id"`
+	Date time.Time `json:"date"`
+}
+
+type ListTransactionsResponse struct {
+	Transactions []domain.Transaction `json:"transactions"`
+	NextCursor   *Cursor              `json:"next_cursor"`
+}
 
 type TransactionHandler struct{ Store db.Store }
 
@@ -20,43 +31,143 @@ type UpdateTransactionRequest map[string]any
 
 // List godoc
 // @Summary      List transactions
-// @Description  Returns a list of transactions, with optional filtering by date range.
+// @Description  Returns a paginated and filtered list of transactions, ideal for infinite scrolling.
 // @Tags         transactions
 // @Produce      json
-// @Param        start  query     string  false  "Start date filter (YYYY-MM-DD)"
-// @Param        end    query     string  false  "End date filter (YYYY-MM-DD)"
-// @Success      200    {array}   domain.Transaction
-// @Failure      400    {object}  HTTPError "invalid date format"
-// @Failure      500    {object}  HTTPError
+// @Param        limit         query int     false "Number of transactions to return per page" default(25)
+// @Param        cursor_date   query string  false "Cursor date from the previous page (RFC3339)"
+// @Param        cursor_id     query int     false "Cursor ID from the previous page"
+// @Param        start_date    query string  false "Filter by start date (YYYY-MM-DD)"
+// @Param        end_date      query string  false "Filter by end date (YYYY-MM-DD)"
+// @Param        amount_min    query number  false "Filter by minimum transaction amount"
+// @Param        amount_max    query number  false "Filter by maximum transaction amount"
+// @Param        direction     query string  false "Filter by transaction direction ('in' or 'out')"
+// @Param        currency      query string  false "Filter by a specific currency (e.g., 'USD')"
+// @Param        categories    query string  false "Comma-separated list of categories to filter by"
+// @Param        merchant      query string  false "Search term for the merchant field (case-insensitive)"
+// @Param        description   query string  false "Search term for the description field (case-insensitive)"
+// @Param        time_start    query string  false "Filter by start time of day (HH:MM:SS)"
+// @Param        time_end      query string  false "Filter by end time of day (HH:MM:SS)"
+// @Success      200           {object}  ListTransactionsResponse
+// @Failure      400           {object}  HTTPError "invalid query parameter"
+// @Failure      500           {object}  HTTPError
 // @Router       /api/transactions [get]
 // @Security     BearerAuth
 func (h *TransactionHandler) List(w http.ResponseWriter, r *http.Request) {
-	var opt db.ListOpts
 	q := r.URL.Query()
+	opts := db.ListOpts{}
+	var err error
 
-	if s := q.Get("start"); s != "" {
+	// pagination
+	opts.Limit = 25
+	if limitStr := q.Get("limit"); limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 && limit <= 100 {
+			opts.Limit = limit
+		}
+	}
+	if cursorDateStr := q.Get("cursor_date"); cursorDateStr != "" {
+		if t, err := time.Parse(time.RFC3339, cursorDateStr); err == nil {
+			opts.CursorDate = &t
+		}
+	}
+	if cursorIDStr := q.Get("cursor_id"); cursorIDStr != "" {
+		if id, err := strconv.ParseInt(cursorIDStr, 10, 64); err == nil {
+			opts.CursorID = &id
+		}
+	}
+
+	// filtering
+	if s := q.Get("start_date"); s != "" {
 		t, err := time.Parse("2006-01-02", s)
 		if err != nil {
-			badRequest(w, "invalid start date format, expected YYYY-MM-DD")
+			badRequest(w, "invalid start_date format, expected YYYY-MM-DD")
 			return
 		}
-		opt.Start = &t
+		opts.Start = &t
 	}
-	if e := q.Get("end"); e != "" {
+	if e := q.Get("end_date"); e != "" {
 		t, err := time.Parse("2006-01-02", e)
 		if err != nil {
-			badRequest(w, "invalid end date format, expected YYYY-MM-DD")
+			badRequest(w, "invalid end_date format, expected YYYY-MM-DD")
 			return
 		}
-		opt.End = &t
+		opts.End = &t
+	}
+	if min := q.Get("amount_min"); min != "" {
+		v, err := strconv.ParseFloat(min, 64)
+		if err != nil {
+			badRequest(w, "invalid amount_min")
+			return
+		}
+		opts.AmountMin = &v
+	}
+	if max := q.Get("amount_max"); max != "" {
+		v, err := strconv.ParseFloat(max, 64)
+		if err != nil {
+			badRequest(w, "invalid amount_max")
+			return
+		}
+		opts.AmountMax = &v
+	}
+	if cats := q.Get("categories"); cats != "" {
+		opts.Categories = strings.Split(cats, ",")
+	}
+	if m := q.Get("merchant"); m != "" {
+		opts.MerchantSearch = &m
+	}
+	if d := q.Get("description"); d != "" {
+		opts.DescriptionSearch = &d
+	}
+	if c := q.Get("currency"); c != "" {
+		opts.Currency = &c
+	}
+	if ts := q.Get("time_start"); ts != "" {
+		_, err := time.Parse("15:04:05", ts)
+		if err != nil {
+			badRequest(w, "invalid time_start format, expected HH:MM:SS")
+			return
+		}
+		opts.TimeOfDayStart = &ts
+	}
+	if te := q.Get("time_end"); te != "" {
+		_, err := time.Parse("15:04:05", te)
+		if err != nil {
+			badRequest(w, "invalid time_end format, expected HH:MM:SS")
+			return
+		}
+		opts.TimeOfDayEnd = &te
+	}
+	if dir := q.Get("direction"); dir == "in" || dir == "out" {
+		opts.Direction = dir
 	}
 
-	out, err := h.Store.ListTransactions(r.Context(), opt)
+	// fetch one more than the limit to check for a next page
+	queryLimit := opts.Limit
+	opts.Limit = queryLimit + 1
+
+	out, err := h.Store.ListTransactions(r.Context(), opts)
 	if err != nil {
 		internalErr(w)
 		return
 	}
-	writeJSON(w, http.StatusOK, out)
+
+	// Determine the next cursor
+	var nextCursor *Cursor
+	if len(out) > queryLimit {
+		// the extra item is the cursor for the next page
+		lastTxn := out[queryLimit]
+		nextCursor = &Cursor{
+			ID:   lastTxn.ID,
+			Date: lastTxn.TxDate,
+		}
+		// trim the extra item from the response
+		out = out[:queryLimit]
+	}
+
+	writeJSON(w, http.StatusOK, ListTransactionsResponse{
+		Transactions: out,
+		NextCursor:   nextCursor,
+	})
 }
 
 // Get godoc

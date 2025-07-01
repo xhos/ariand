@@ -325,7 +325,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns a list of transactions, with optional filtering by date range.",
+                "description": "Returns a paginated and filtered list of transactions, ideal for infinite scrolling.",
                 "produces": [
                     "application/json"
                 ],
@@ -335,15 +335,88 @@ const docTemplate = `{
                 "summary": "List transactions",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Start date filter (YYYY-MM-DD)",
-                        "name": "start",
+                        "type": "integer",
+                        "default": 25,
+                        "description": "Number of transactions to return per page",
+                        "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "End date filter (YYYY-MM-DD)",
-                        "name": "end",
+                        "description": "Cursor date from the previous page (RFC3339)",
+                        "name": "cursor_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Cursor ID from the previous page",
+                        "name": "cursor_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by start date (YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by end date (YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Filter by minimum transaction amount",
+                        "name": "amount_min",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Filter by maximum transaction amount",
+                        "name": "amount_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by transaction direction ('in' or 'out')",
+                        "name": "direction",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by a specific currency (e.g., 'USD')",
+                        "name": "currency",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated list of categories to filter by",
+                        "name": "categories",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search term for the merchant field (case-insensitive)",
+                        "name": "merchant",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search term for the description field (case-insensitive)",
+                        "name": "description",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by start time of day (HH:MM:SS)",
+                        "name": "time_start",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by end time of day (HH:MM:SS)",
+                        "name": "time_end",
                         "in": "query"
                     }
                 ],
@@ -351,14 +424,11 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.Transaction"
-                            }
+                            "$ref": "#/definitions/handlers.ListTransactionsResponse"
                         }
                     },
                     "400": {
-                        "description": "invalid date format",
+                        "description": "invalid query parameter",
                         "schema": {
                             "$ref": "#/definitions/handlers.HTTPError"
                         }
@@ -680,6 +750,17 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.Cursor": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
         "handlers.DebtResponse": {
             "type": "object",
             "properties": {
@@ -699,6 +780,20 @@ const docTemplate = `{
                 "message": {
                     "type": "string",
                     "example": "internal server error"
+                }
+            }
+        },
+        "handlers.ListTransactionsResponse": {
+            "type": "object",
+            "properties": {
+                "next_cursor": {
+                    "$ref": "#/definitions/handlers.Cursor"
+                },
+                "transactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Transaction"
+                    }
                 }
             }
         },

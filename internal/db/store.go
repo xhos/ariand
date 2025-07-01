@@ -9,12 +9,27 @@ import (
 
 // ListOpts specifies filtering and pagination options for listing transactions
 type ListOpts struct {
-	Start     *time.Time
-	End       *time.Time
-	Accounts  []string
-	Direction string
-	Limit     int
-	Offset    int
+	// --- cursor for pagination ---
+	// based on the last transaction from the previous page to fetch the next one
+	CursorID   *int64
+	CursorDate *time.Time
+
+	// --- filtering ---
+	Start             *time.Time
+	End               *time.Time
+	Accounts          []string
+	Categories        []string
+	Direction         string  // "in" or "out"
+	MerchantSearch    *string // case-insensitive search in merchant
+	DescriptionSearch *string // case-insensitive search in description
+	AmountMin         *float64
+	AmountMax         *float64
+	Currency          *string
+	TimeOfDayStart    *string // "HH:MM:SS" format
+	TimeOfDayEnd      *string // "HH:MM:SS" format
+
+	// --- pagination Limit ---
+	Limit int
 }
 
 var (
