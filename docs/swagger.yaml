@@ -359,6 +359,10 @@ paths:
         in: query
         name: categories
         type: string
+      - description: Comma-separated list of account IDs to filter by
+        in: query
+        name: account_ids
+        type: string
       - description: Search term for the merchant field (case-insensitive)
         in: query
         name: merchant

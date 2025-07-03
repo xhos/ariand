@@ -397,6 +397,12 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "description": "Comma-separated list of account IDs to filter by",
+                        "name": "account_ids",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
                         "description": "Search term for the merchant field (case-insensitive)",
                         "name": "merchant",
                         "in": "query"
