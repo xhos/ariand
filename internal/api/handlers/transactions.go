@@ -44,6 +44,7 @@ type UpdateTransactionRequest map[string]any
 // @Param        direction     query string  false "Filter by transaction direction ('in' or 'out')"
 // @Param        currency      query string  false "Filter by a specific currency (e.g., 'USD')"
 // @Param        categories    query string  false "Comma-separated list of categories to filter by"
+// @Param        account_ids   query string  false "Comma-separated list of account IDs to filter by"
 // @Param        merchant      query string  false "Search term for the merchant field (case-insensitive)"
 // @Param        description   query string  false "Search term for the description field (case-insensitive)"
 // @Param        time_start    query string  false "Filter by start time of day (HH:MM:SS)"
@@ -111,6 +112,11 @@ func (h *TransactionHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	if cats := q.Get("categories"); cats != "" {
 		opts.Categories = strings.Split(cats, ",")
+	}
+	if accountID := q.Get("account_id"); accountID != "" {
+		if id, err := strconv.ParseInt(accountID, 10, 64); err == nil {
+			opts.AccountIDs = []int64{id}
+		}
 	}
 	if m := q.Get("merchant"); m != "" {
 		opts.MerchantSearch = &m

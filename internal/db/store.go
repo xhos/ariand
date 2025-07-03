@@ -17,7 +17,7 @@ type ListOpts struct {
 	// --- filtering ---
 	Start             *time.Time
 	End               *time.Time
-	Accounts          []string
+	AccountIDs        []int64
 	Categories        []string
 	Direction         string  // "in" or "out"
 	MerchantSearch    *string // case-insensitive search in merchant

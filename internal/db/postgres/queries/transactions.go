@@ -124,9 +124,9 @@ func (q *Transactions) ListTransactions(ctx context.Context, opts db.ListOpts) (
 		conditions = append(conditions, fmt.Sprintf("tx_date::time <= $%d", len(args)+1))
 		args = append(args, *opts.TimeOfDayEnd)
 	}
-	if len(opts.Accounts) > 0 {
+	if len(opts.AccountIDs) > 0 {
 		conditions = append(conditions, fmt.Sprintf("account_id = ANY($%d)", len(args)+1))
-		args = append(args, opts.Accounts)
+		args = append(args, opts.AccountIDs)
 	}
 
 	// --- construct the final query ---
