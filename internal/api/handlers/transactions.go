@@ -113,8 +113,8 @@ func (h *TransactionHandler) List(w http.ResponseWriter, r *http.Request) {
 	if cats := q.Get("categories"); cats != "" {
 		opts.Categories = strings.Split(cats, ",")
 	}
-	if accountID := q.Get("account_id"); accountID != "" {
-		if id, err := strconv.ParseInt(accountID, 10, 64); err == nil {
+	if accountIDs := q.Get("account_ids"); accountIDs != "" {
+		if id, err := strconv.ParseInt(accountIDs, 10, 64); err == nil {
 			opts.AccountIDs = []int64{id}
 		}
 	}
