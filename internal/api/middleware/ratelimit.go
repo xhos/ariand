@@ -8,6 +8,9 @@ import (
 	"github.com/didip/tollbooth/v8/limiter"
 )
 
+// make the function a variable so we can replace it in tests
+var tollboothLimitFuncHandler = tollbooth.LimitFuncHandler
+
 func RateLimit() Middleware {
 	// 1 request/sec for anonymous users
 	lmt := tollbooth.NewLimiter(1, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour})
@@ -26,7 +29,7 @@ func RateLimit() Middleware {
 			}
 
 			// otherwise, enforce the ip-based limit for anonymous users
-			tollbooth.LimitFuncHandler(lmt, func(w http.ResponseWriter, r *http.Request) {
+			tollboothLimitFuncHandler(lmt, func(w http.ResponseWriter, r *http.Request) {
 				next.ServeHTTP(w, r)
 			}).ServeHTTP(w, r)
 		})

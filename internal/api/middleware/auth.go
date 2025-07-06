@@ -5,7 +5,6 @@ import (
 	"crypto/subtle"
 	"errors"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/charmbracelet/log"
@@ -17,8 +16,15 @@ var Authenticated = authCtxKey{}
 
 var ErrUnauthorized = errors.New("invalid token")
 
-func Auth(logger *log.Logger) func(http.Handler) http.Handler {
+func Auth(logger *log.Logger, expectedKey string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
+		if expectedKey == "" {
+			logger.Error("API_KEY not set on server")
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "server configuration error", http.StatusInternalServerError)
+			})
+		}
+
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			path := r.URL.Path
 			if path == "/healthz" ||
@@ -43,13 +49,6 @@ func Auth(logger *log.Logger) func(http.Handler) http.Handler {
 			}
 
 			apiKey := strings.TrimPrefix(token, prefix)
-
-			expectedKey := os.Getenv("API_KEY")
-			if expectedKey == "" {
-				logger.Error("API_KEY not set")
-				http.Error(w, "server configuration error", http.StatusInternalServerError)
-				return
-			}
 
 			if subtle.ConstantTimeCompare([]byte(apiKey), []byte(expectedKey)) != 1 {
 				logger.Error("invalid api key")
