@@ -1,5 +1,5 @@
 // @title           Ariand API
-// @version         1.0
+// @version         0.1.0
 // @description     backend for arian
 // @BasePath        /
 // @securityDefinitions.apikey BearerAuth
@@ -9,10 +9,14 @@
 package main
 
 import (
+	"ariand/internal/ai"
+	_ "ariand/internal/ai/gollm"
 	"ariand/internal/api/handlers"
 	"ariand/internal/api/middleware"
 	"ariand/internal/config"
 	"ariand/internal/db/postgres"
+	"ariand/internal/service"
+
 	"context"
 	"errors"
 	"net/http"
@@ -46,8 +50,14 @@ func main() {
 	defer store.Close()
 	logger.Info("database connection established")
 
-	// --- http Server ---
-	router := handlers.SetupRoutes(store)
+	// --- categorizer ---
+	categorizer := &service.Categorizer{
+		Store: store,
+		Log:   logger.WithPrefix("categorizer"),
+	}
+
+	// --- http server ---
+	router := handlers.SetupRoutes(store, ai.GetManager(), categorizer)
 
 	stack := middleware.CreateStack(
 		middleware.RequestID(),

@@ -43,7 +43,56 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Adds a new account to the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "accounts"
+                ],
+                "summary": "Create a new account",
+                "parameters": [
+                    {
+                        "description": "new account object",
+                        "name": "account",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Account"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -80,16 +129,66 @@ const docTemplate = `{
                             "$ref": "#/definitions/domain.Account"
                         }
                     },
+                    "400": {
+                        "description": "invalid id format",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "account not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes an account and all of its associated transactions.",
+                "tags": [
+                    "accounts"
+                ],
+                "summary": "Delete an account",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Account ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "invalid id format",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "account not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -102,17 +201,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Defines a true balance for an account at the current time. This anchor is the starting point for all balance calculations.",
+                "description": "Updates the anchor balance for an account and sets the anchor date to now.",
                 "consumes": [
-                    "application/json"
-                ],
-                "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "accounts"
                 ],
-                "summary": "Set account anchor to now",
+                "summary": "Update account anchor",
                 "parameters": [
                     {
                         "type": "integer",
@@ -136,21 +232,21 @@ const docTemplate = `{
                         "description": "No Content"
                     },
                     "400": {
-                        "description": "invalid request payload",
+                        "description": "invalid request payload or id format",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "account not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -163,7 +259,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns the current calculated balance of an account based on its anchor and subsequent transactions.",
+                "description": "Returns the current calculated balance of an account.",
                 "produces": [
                     "application/json"
                 ],
@@ -187,16 +283,257 @@ const docTemplate = `{
                             "$ref": "#/definitions/handlers.BalanceResponse"
                         }
                     },
+                    "400": {
+                        "description": "invalid id format",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "account not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/categories": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a list of all transaction categories.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "categories"
+                ],
+                "summary": "List all categories",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.Category"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Adds a new category to the database. If color is omitted, a random one is assigned.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "categories"
+                ],
+                "summary": "Create a new category",
+                "parameters": [
+                    {
+                        "description": "Category object",
+                        "name": "category",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateCategoryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.CreateCategoryResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/categories/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves a category by its numeric ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "categories"
+                ],
+                "summary": "Get a single category",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Category ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Category"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid id format",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "category not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a category by its numeric ID.",
+                "tags": [
+                    "categories"
+                ],
+                "summary": "Delete a category",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Category ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "invalid id format",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "category not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Partially updates a category's fields. Only the provided fields will be changed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "categories"
+                ],
+                "summary": "Update a category",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Category ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update (e.g., {\\",
+                        "name": "fields",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UpdateCategoryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "category not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -227,7 +564,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -258,7 +595,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -306,13 +643,13 @@ const docTemplate = `{
                     "400": {
                         "description": "invalid date format",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -325,104 +662,38 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns a paginated and filtered list of transactions, ideal for infinite scrolling.",
+                "description": "returns a paginated and filtered list of transactions",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "transactions"
                 ],
-                "summary": "List transactions",
+                "summary": "list transactions",
                 "parameters": [
                     {
                         "type": "integer",
                         "default": 25,
-                        "description": "Number of transactions to return per page",
+                        "description": "page size",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Cursor date from the previous page (RFC3339)",
+                        "description": "cursor date from previous page (rfc3339nano)",
                         "name": "cursor_date",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Cursor ID from the previous page",
+                        "description": "cursor id from previous page",
                         "name": "cursor_id",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Filter by start date (YYYY-MM-DD)",
-                        "name": "start_date",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by end date (YYYY-MM-DD)",
-                        "name": "end_date",
-                        "in": "query"
-                    },
-                    {
-                        "type": "number",
-                        "description": "Filter by minimum transaction amount",
-                        "name": "amount_min",
-                        "in": "query"
-                    },
-                    {
-                        "type": "number",
-                        "description": "Filter by maximum transaction amount",
-                        "name": "amount_max",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by transaction direction ('in' or 'out')",
-                        "name": "direction",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by a specific currency (e.g., 'USD')",
-                        "name": "currency",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Comma-separated list of categories to filter by",
-                        "name": "categories",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Comma-separated list of account IDs to filter by",
+                        "description": "comma-separated list of account ids",
                         "name": "account_ids",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Search term for the merchant field (case-insensitive)",
-                        "name": "merchant",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Search term for the description field (case-insensitive)",
-                        "name": "description",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by start time of day (HH:MM:SS)",
-                        "name": "time_start",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by end time of day (HH:MM:SS)",
-                        "name": "time_end",
                         "in": "query"
                     }
                 ],
@@ -436,13 +707,13 @@ const docTemplate = `{
                     "400": {
                         "description": "invalid query parameter",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -453,7 +724,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Adds a new transaction to the database.",
+                "description": "adds a new transaction to the database",
                 "consumes": [
                     "application/json"
                 ],
@@ -463,10 +734,10 @@ const docTemplate = `{
                 "tags": [
                     "transactions"
                 ],
-                "summary": "Create a new transaction",
+                "summary": "create a new transaction",
                 "parameters": [
                     {
-                        "description": "Transaction object",
+                        "description": "transaction object",
                         "name": "transaction",
                         "in": "body",
                         "required": true,
@@ -485,19 +756,19 @@ const docTemplate = `{
                     "400": {
                         "description": "invalid request body",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "duplicate transaction",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -510,18 +781,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Retrieves a transaction by its numeric ID.",
+                "description": "retrieves a transaction by its numeric id",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "transactions"
                 ],
-                "summary": "Get a single transaction",
+                "summary": "get a single transaction",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Transaction ID",
+                        "description": "transaction id",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -534,16 +805,22 @@ const docTemplate = `{
                             "$ref": "#/definitions/domain.Transaction"
                         }
                     },
+                    "400": {
+                        "description": "invalid id format",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "transaction not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -554,15 +831,15 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Deletes a transaction by its numeric ID.",
+                "description": "deletes a transaction by its numeric id",
                 "tags": [
                     "transactions"
                 ],
-                "summary": "Delete a transaction",
+                "summary": "delete a transaction",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Transaction ID",
+                        "description": "transaction id",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -572,16 +849,22 @@ const docTemplate = `{
                     "204": {
                         "description": "No Content"
                     },
+                    "400": {
+                        "description": "invalid id format",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "transaction not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -592,24 +875,24 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Partially updates a transaction's fields. Only the provided fields will be changed.",
+                "description": "partially updates a transaction's fields",
                 "consumes": [
                     "application/json"
                 ],
                 "tags": [
                     "transactions"
                 ],
-                "summary": "Update a transaction",
+                "summary": "update a transaction",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Transaction ID",
+                        "description": "transaction id",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Fields to update",
+                        "description": "fields to update",
                         "name": "fields",
                         "in": "body",
                         "required": true,
@@ -623,21 +906,21 @@ const docTemplate = `{
                         "description": "No Content"
                     },
                     "400": {
-                        "description": "invalid request body",
+                        "description": "invalid request body or id format",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "transaction not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HTTPError"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -651,16 +934,16 @@ const docTemplate = `{
                 "alias": {
                     "type": "string"
                 },
-                "anchor_balance": {
+                "anchorBalance": {
                     "type": "number"
                 },
-                "anchor_date": {
+                "anchorDate": {
                     "type": "string"
                 },
                 "bank": {
                     "type": "string"
                 },
-                "created_at": {
+                "createdAt": {
                     "type": "string"
                 },
                 "id": {
@@ -674,28 +957,51 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.Category": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.Transaction": {
             "type": "object",
             "properties": {
-                "account_id": {
+                "accountId": {
                     "type": "integer"
                 },
-                "balance_after": {
+                "balanceAfter": {
                     "type": "number"
                 },
-                "category": {
+                "catStatus": {
                     "type": "string"
                 },
-                "email_id": {
+                "categoryId": {
+                    "type": "integer"
+                },
+                "categorySlug": {
                     "type": "string"
                 },
-                "exchange_rate": {
+                "emailId": {
+                    "type": "string"
+                },
+                "exchangeRate": {
                     "type": "number"
                 },
-                "foreign_amount": {
+                "foreignAmount": {
                     "type": "number"
                 },
-                "foreign_currency": {
+                "foreignCurrency": {
                     "type": "string"
                 },
                 "id": {
@@ -704,22 +1010,28 @@ const docTemplate = `{
                 "merchant": {
                     "type": "string"
                 },
-                "tx_amount": {
+                "suggestions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "txAmount": {
                     "type": "number"
                 },
-                "tx_currency": {
+                "txCurrency": {
                     "type": "string"
                 },
-                "tx_date": {
+                "txDate": {
                     "type": "string"
                 },
-                "tx_desc": {
+                "txDesc": {
                     "type": "string"
                 },
-                "tx_direction": {
+                "txDirection": {
                     "type": "string"
                 },
-                "user_notes": {
+                "userNotes": {
                     "type": "string"
                 }
             }
@@ -730,7 +1042,7 @@ const docTemplate = `{
                 "date": {
                     "type": "string"
                 },
-                "expense": {
+                "expenses": {
                     "type": "number"
                 },
                 "income": {
@@ -744,6 +1056,57 @@ const docTemplate = `{
                 "balance": {
                     "type": "number",
                     "example": 1234.56
+                }
+            }
+        },
+        "handlers.CreateAccountRequest": {
+            "type": "object",
+            "properties": {
+                "alias": {
+                    "type": "string",
+                    "example": "main"
+                },
+                "anchor_balance": {
+                    "type": "number",
+                    "example": 1234.56
+                },
+                "bank": {
+                    "type": "string",
+                    "example": "big bank inc."
+                },
+                "name": {
+                    "type": "string",
+                    "example": "main chequing"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "chequing"
+                }
+            }
+        },
+        "handlers.CreateCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "type": "string",
+                    "example": "#FFD700"
+                },
+                "label": {
+                    "type": "string",
+                    "example": "Groceries"
+                },
+                "slug": {
+                    "type": "string",
+                    "example": "food.groceries"
+                }
+            }
+        },
+        "handlers.CreateCategoryResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "example": 101
                 }
             }
         },
@@ -776,23 +1139,23 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.HTTPError": {
+        "handlers.ErrorResponse": {
             "type": "object",
             "properties": {
                 "code": {
                     "type": "integer",
-                    "example": 500
+                    "example": 404
                 },
                 "message": {
                     "type": "string",
-                    "example": "internal server error"
+                    "example": "resource not found"
                 }
             }
         },
         "handlers.ListTransactionsResponse": {
             "type": "object",
             "properties": {
-                "next_cursor": {
+                "nextCursor": {
                     "$ref": "#/definitions/handlers.Cursor"
                 },
                 "transactions": {
@@ -812,6 +1175,10 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.UpdateCategoryRequest": {
+            "type": "object",
+            "additionalProperties": {}
+        },
         "handlers.UpdateTransactionRequest": {
             "type": "object",
             "additionalProperties": {}
@@ -829,7 +1196,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0",
+	Version:          "0.1.0",
 	Host:             "",
 	BasePath:         "/",
 	Schemes:          []string{},

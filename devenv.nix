@@ -13,6 +13,14 @@
     go fmt ./...
   '';
 
+  scripts.tstv.exec = ''
+    CLICOLOR_FORCE=1 go test ./... -v
+  '';
+
+  scripts.tst.exec = ''
+    go test ./...
+  '';
+
   scripts.docs.exec = ''
     swag init -g cmd/main.go
   '';

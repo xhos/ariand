@@ -4,13 +4,13 @@ definitions:
     properties:
       alias:
         type: string
-      anchor_balance:
+      anchorBalance:
         type: number
-      anchor_date:
+      anchorDate:
         type: string
       bank:
         type: string
-      created_at:
+      createdAt:
         type: string
       id:
         type: integer
@@ -19,44 +19,63 @@ definitions:
       type:
         type: string
     type: object
+  domain.Category:
+    properties:
+      color:
+        type: string
+      id:
+        type: integer
+      label:
+        type: string
+      slug:
+        type: string
+    type: object
   domain.Transaction:
     properties:
-      account_id:
+      accountId:
         type: integer
-      balance_after:
+      balanceAfter:
         type: number
-      category:
+      catStatus:
         type: string
-      email_id:
+      categoryId:
+        type: integer
+      categorySlug:
         type: string
-      exchange_rate:
+      emailId:
+        type: string
+      exchangeRate:
         type: number
-      foreign_amount:
+      foreignAmount:
         type: number
-      foreign_currency:
+      foreignCurrency:
         type: string
       id:
         type: integer
       merchant:
         type: string
-      tx_amount:
+      suggestions:
+        items:
+          type: string
+        type: array
+      txAmount:
         type: number
-      tx_currency:
+      txCurrency:
         type: string
-      tx_date:
+      txDate:
         type: string
-      tx_desc:
+      txDesc:
         type: string
-      tx_direction:
+      txDirection:
         type: string
-      user_notes:
+      userNotes:
         type: string
     type: object
   domain.TrendPoint:
     properties:
       date:
         type: string
-      expense:
+      expenses:
         type: number
       income:
         type: number
@@ -66,6 +85,42 @@ definitions:
       balance:
         example: 1234.56
         type: number
+    type: object
+  handlers.CreateAccountRequest:
+    properties:
+      alias:
+        example: main
+        type: string
+      anchor_balance:
+        example: 1234.56
+        type: number
+      bank:
+        example: big bank inc.
+        type: string
+      name:
+        example: main chequing
+        type: string
+      type:
+        example: chequing
+        type: string
+    type: object
+  handlers.CreateCategoryRequest:
+    properties:
+      color:
+        example: '#FFD700'
+        type: string
+      label:
+        example: Groceries
+        type: string
+      slug:
+        example: food.groceries
+        type: string
+    type: object
+  handlers.CreateCategoryResponse:
+    properties:
+      id:
+        example: 101
+        type: integer
     type: object
   handlers.CreateTransactionResponse:
     properties:
@@ -86,18 +141,18 @@ definitions:
         example: 2550.75
         type: number
     type: object
-  handlers.HTTPError:
+  handlers.ErrorResponse:
     properties:
       code:
-        example: 500
+        example: 404
         type: integer
       message:
-        example: internal server error
+        example: resource not found
         type: string
     type: object
   handlers.ListTransactionsResponse:
     properties:
-      next_cursor:
+      nextCursor:
         $ref: '#/definitions/handlers.Cursor'
       transactions:
         items:
@@ -110,6 +165,9 @@ definitions:
         example: 1234.56
         type: number
     type: object
+  handlers.UpdateCategoryRequest:
+    additionalProperties: {}
+    type: object
   handlers.UpdateTransactionRequest:
     additionalProperties: {}
     type: object
@@ -117,7 +175,7 @@ info:
   contact: {}
   description: backend for arian
   title: Ariand API
-  version: "1.0"
+  version: 0.1.0
 paths:
   /api/accounts:
     get:
@@ -134,13 +192,72 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List all accounts
       tags:
       - accounts
+    post:
+      consumes:
+      - application/json
+      description: Adds a new account to the database.
+      parameters:
+      - description: new account object
+        in: body
+        name: account
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Account'
+        "400":
+          description: invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new account
+      tags:
+      - accounts
   /api/accounts/{id}:
+    delete:
+      description: Deletes an account and all of its associated transactions.
+      parameters:
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: invalid id format
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: account not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete an account
+      tags:
+      - accounts
     get:
       description: Returns a single account by its numeric ID.
       parameters:
@@ -156,14 +273,18 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/domain.Account'
+        "400":
+          description: invalid id format
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: account not found
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get account by ID
@@ -173,8 +294,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Defines a true balance for an account at the current time. This
-        anchor is the starting point for all balance calculations.
+      description: Updates the anchor balance for an account and sets the anchor date
+        to now.
       parameters:
       - description: Account ID
         in: path
@@ -187,32 +308,29 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/handlers.SetAnchorRequest'
-      produces:
-      - application/json
       responses:
         "204":
           description: No Content
         "400":
-          description: invalid request payload
+          description: invalid request payload or id format
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: account not found
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Set account anchor to now
+      summary: Update account anchor
       tags:
       - accounts
   /api/accounts/{id}/balance:
     get:
-      description: Returns the current calculated balance of an account based on its
-        anchor and subsequent transactions.
+      description: Returns the current calculated balance of an account.
       parameters:
       - description: Account ID
         in: path
@@ -226,19 +344,174 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/handlers.BalanceResponse'
+        "400":
+          description: invalid id format
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: account not found
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get current balance
       tags:
       - accounts
+  /api/categories:
+    get:
+      description: Returns a list of all transaction categories.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Category'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all categories
+      tags:
+      - categories
+    post:
+      consumes:
+      - application/json
+      description: Adds a new category to the database. If color is omitted, a random
+        one is assigned.
+      parameters:
+      - description: Category object
+        in: body
+        name: category
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.CreateCategoryResponse'
+        "400":
+          description: invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new category
+      tags:
+      - categories
+  /api/categories/{id}:
+    delete:
+      description: Deletes a category by its numeric ID.
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: invalid id format
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: category not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a category
+      tags:
+      - categories
+    get:
+      description: Retrieves a category by its numeric ID.
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Category'
+        "400":
+          description: invalid id format
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: category not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a single category
+      tags:
+      - categories
+    patch:
+      consumes:
+      - application/json
+      description: Partially updates a category's fields. Only the provided fields
+        will be changed.
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Fields to update (e.g., {\
+        in: body
+        name: fields
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateCategoryRequest'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: category not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a category
+      tags:
+      - categories
   /api/dashboard/balance:
     get:
       description: Calculates and returns the sum of current balances across all accounts.
@@ -252,7 +525,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get total balance
@@ -272,7 +545,7 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get total debt
@@ -303,11 +576,11 @@ paths:
         "400":
           description: invalid date format
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get income & expense trends
@@ -315,69 +588,24 @@ paths:
       - dashboard
   /api/transactions:
     get:
-      description: Returns a paginated and filtered list of transactions, ideal for
-        infinite scrolling.
+      description: returns a paginated and filtered list of transactions
       parameters:
       - default: 25
-        description: Number of transactions to return per page
+        description: page size
         in: query
         name: limit
         type: integer
-      - description: Cursor date from the previous page (RFC3339)
+      - description: cursor date from previous page (rfc3339nano)
         in: query
         name: cursor_date
         type: string
-      - description: Cursor ID from the previous page
+      - description: cursor id from previous page
         in: query
         name: cursor_id
         type: integer
-      - description: Filter by start date (YYYY-MM-DD)
-        in: query
-        name: start_date
-        type: string
-      - description: Filter by end date (YYYY-MM-DD)
-        in: query
-        name: end_date
-        type: string
-      - description: Filter by minimum transaction amount
-        in: query
-        name: amount_min
-        type: number
-      - description: Filter by maximum transaction amount
-        in: query
-        name: amount_max
-        type: number
-      - description: Filter by transaction direction ('in' or 'out')
-        in: query
-        name: direction
-        type: string
-      - description: Filter by a specific currency (e.g., 'USD')
-        in: query
-        name: currency
-        type: string
-      - description: Comma-separated list of categories to filter by
-        in: query
-        name: categories
-        type: string
-      - description: Comma-separated list of account IDs to filter by
+      - description: comma-separated list of account ids
         in: query
         name: account_ids
-        type: string
-      - description: Search term for the merchant field (case-insensitive)
-        in: query
-        name: merchant
-        type: string
-      - description: Search term for the description field (case-insensitive)
-        in: query
-        name: description
-        type: string
-      - description: Filter by start time of day (HH:MM:SS)
-        in: query
-        name: time_start
-        type: string
-      - description: Filter by end time of day (HH:MM:SS)
-        in: query
-        name: time_end
         type: string
       produces:
       - application/json
@@ -389,22 +617,22 @@ paths:
         "400":
           description: invalid query parameter
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: List transactions
+      summary: list transactions
       tags:
       - transactions
     post:
       consumes:
       - application/json
-      description: Adds a new transaction to the database.
+      description: adds a new transaction to the database
       parameters:
-      - description: Transaction object
+      - description: transaction object
         in: body
         name: transaction
         required: true
@@ -420,25 +648,25 @@ paths:
         "400":
           description: invalid request body
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "409":
           description: duplicate transaction
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Create a new transaction
+      summary: create a new transaction
       tags:
       - transactions
   /api/transactions/{id}:
     delete:
-      description: Deletes a transaction by its numeric ID.
+      description: deletes a transaction by its numeric id
       parameters:
-      - description: Transaction ID
+      - description: transaction id
         in: path
         name: id
         required: true
@@ -446,23 +674,27 @@ paths:
       responses:
         "204":
           description: No Content
+        "400":
+          description: invalid id format
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: transaction not found
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Delete a transaction
+      summary: delete a transaction
       tags:
       - transactions
     get:
-      description: Retrieves a transaction by its numeric ID.
+      description: retrieves a transaction by its numeric id
       parameters:
-      - description: Transaction ID
+      - description: transaction id
         in: path
         name: id
         required: true
@@ -474,31 +706,34 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/domain.Transaction'
+        "400":
+          description: invalid id format
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: transaction not found
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Get a single transaction
+      summary: get a single transaction
       tags:
       - transactions
     patch:
       consumes:
       - application/json
-      description: Partially updates a transaction's fields. Only the provided fields
-        will be changed.
+      description: partially updates a transaction's fields
       parameters:
-      - description: Transaction ID
+      - description: transaction id
         in: path
         name: id
         required: true
         type: integer
-      - description: Fields to update
+      - description: fields to update
         in: body
         name: fields
         required: true
@@ -508,20 +743,20 @@ paths:
         "204":
           description: No Content
         "400":
-          description: invalid request body
+          description: invalid request body or id format
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: transaction not found
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.HTTPError'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Update a transaction
+      summary: update a transaction
       tags:
       - transactions
 securityDefinitions:
