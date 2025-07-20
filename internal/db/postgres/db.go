@@ -19,6 +19,7 @@ type DB struct {
 	*queries.Accounts
 	*queries.Dashboard
 	*queries.Transactions
+	*queries.Categories
 }
 
 //go:embed schema.sql
@@ -57,6 +58,24 @@ func New(dsn string) (*DB, error) {
 		Accounts:     queries.NewAccounts(conn),
 		Dashboard:    queries.NewDashboard(conn),
 		Transactions: queries.NewTransactions(conn),
+		Categories:   queries.NewCategories(conn),
+	}, nil
+}
+
+// NewFromDB initializes a DB instance from an existing sqlx.DB connection.
+// It assumes the connection is alive and applies the schema.
+func NewFromDB(conn *sqlx.DB) (*DB, error) {
+	if err := ensureSchema(conn); err != nil {
+		return nil, fmt.Errorf("failed to ensure schema: %w", err)
+	}
+
+	return &DB{
+		DB:           conn,
+		log:          log.WithPrefix("db"),
+		Accounts:     queries.NewAccounts(conn),
+		Dashboard:    queries.NewDashboard(conn),
+		Transactions: queries.NewTransactions(conn),
+		Categories:   queries.NewCategories(conn),
 	}, nil
 }
 
