@@ -9,8 +9,8 @@ type Account struct {
 	Type  string  `db:"type"           json:"type"`
 	Alias *string `db:"alias"          json:"alias,omitempty"`
 
-	AnchorDate    time.Time `db:"anchor_date"    json:"anchor_date"`
-	AnchorBalance float64   `db:"anchor_balance" json:"anchor_balance"`
+	AnchorDate    time.Time `db:"anchor_date"    json:"anchorDate"`
+	AnchorBalance float64   `db:"anchor_balance" json:"anchorBalance"`
 
-	CreatedAt time.Time `db:"created_at"     json:"created_at"`
+	CreatedAt time.Time `db:"created_at"     json:"createdAt"`
 }

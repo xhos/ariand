@@ -2,27 +2,62 @@ package handlers
 
 import (
 	"ariand/internal/db"
-	_ "ariand/internal/domain"
-	"database/sql"
+	"ariand/internal/domain"
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
+	"time"
 )
 
 type AccountHandler struct{ Store db.Store }
 
-type HTTPError struct {
-	Code    int    `json:"code" example:"500"`
-	Message string `json:"message" example:"internal server error"`
+type CreateAccountRequest struct {
+	Name          string  `json:"name" example:"main chequing"`
+	Bank          string  `json:"bank" example:"big bank inc."`
+	Type          string  `json:"type" example:"chequing"`
+	Alias         *string `json:"alias,omitempty" example:"main"`
+	AnchorBalance float64 `json:"anchor_balance" example:"1234.56"`
 }
 
 type SetAnchorRequest struct {
 	Balance float64 `json:"balance" example:"1234.56"`
 }
 
-type BalanceResponse struct {
-	Balance float64 `json:"balance" example:"1234.56"`
+// Create godoc
+// @Summary      Create a new account
+// @Description  Adds a new account to the database.
+// @Tags         accounts
+// @Accept       json
+// @Produce      json
+// @Param        account  body      CreateAccountRequest  true  "new account object"
+// @Success      201      {object}  domain.Account
+// @Failure      400      {object}  ErrorResponse "invalid request body"
+// @Failure      500      {object}  ErrorResponse
+// @Router       /api/accounts [post]
+// @Security     BearerAuth
+func (h *AccountHandler) Create(w http.ResponseWriter, r *http.Request) {
+	var req CreateAccountRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		badRequest(w, "invalid json")
+		return
+	}
+
+	acc := &domain.Account{
+		Name:          req.Name,
+		Bank:          req.Bank,
+		Type:          req.Type,
+		Alias:         req.Alias,
+		AnchorDate:    time.Now(),
+		AnchorBalance: req.AnchorBalance,
+	}
+
+	created, err := h.Store.CreateAccount(r.Context(), acc)
+	if err != nil {
+		internalErr(w)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, created)
 }
 
 // List godoc
@@ -31,7 +66,7 @@ type BalanceResponse struct {
 // @Tags         accounts
 // @Produce      json
 // @Success      200  {array}   domain.Account
-// @Failure      500  {object}  HTTPError
+// @Failure      500  {object}  ErrorResponse
 // @Router       /api/accounts [get]
 // @Security     BearerAuth
 func (h *AccountHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +75,6 @@ func (h *AccountHandler) List(w http.ResponseWriter, r *http.Request) {
 		internalErr(w)
 		return
 	}
-
 	writeJSON(w, http.StatusOK, accts)
 }
 
@@ -51,41 +85,77 @@ func (h *AccountHandler) List(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        id   path      int  true  "Account ID"
 // @Success      200  {object}  domain.Account
-// @Failure      404  {object}  HTTPError "account not found"
-// @Failure      500  {object}  HTTPError
+// @Failure      400  {object}  ErrorResponse "invalid id format"
+// @Failure      404  {object}  ErrorResponse "account not found"
+// @Failure      500  {object}  ErrorResponse
 // @Router       /api/accounts/{id} [get]
 // @Security     BearerAuth
 func (h *AccountHandler) Get(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.ParseInt(r.PathValue("id"), 10, 64)
-	acc, err := h.Store.GetAccount(r.Context(), id)
+	id, err := parseIDFromRequest(r)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) { // Use db.ErrNotFound if you have it
+		badRequest(w, "invalid id format")
+		return
+	}
+
+	acc, err := h.Store.GetAccount(r.Context(), id)
+	switch {
+	case errors.Is(err, db.ErrNotFound):
+		notFound(w)
+	case err != nil:
+		internalErr(w)
+	default:
+		writeJSON(w, http.StatusOK, acc)
+	}
+}
+
+// Delete godoc
+// @Summary      Delete an account
+// @Description  Deletes an account and all of its associated transactions.
+// @Tags         accounts
+// @Param        id  path      int  true  "Account ID"
+// @Success      204
+// @Failure      400 {object}  ErrorResponse "invalid id format"
+// @Failure      404 {object}  ErrorResponse "account not found"
+// @Failure      500 {object}  ErrorResponse
+// @Router       /api/accounts/{id} [delete]
+// @Security     BearerAuth
+func (h *AccountHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIDFromRequest(r)
+	if err != nil {
+		badRequest(w, "invalid id format")
+		return
+	}
+
+	if err := h.Store.DeleteAccount(r.Context(), id); err != nil {
+		if errors.Is(err, db.ErrNotFound) {
 			notFound(w)
 			return
 		}
 		internalErr(w)
 		return
 	}
-
-	writeJSON(w, http.StatusOK, acc)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // SetAnchor godoc
-// @Summary      Set account anchor to now
-// @Description  Defines a true balance for an account at the current time. This anchor is the starting point for all balance calculations.
+// @Summary      Update account anchor
+// @Description  Updates the anchor balance for an account and sets the anchor date to now.
 // @Tags         accounts
 // @Accept       json
-// @Produce      json
 // @Param        id       path      int               true  "Account ID"
 // @Param        payload  body      SetAnchorRequest  true  "Anchor Payload (balance only)"
 // @Success      204
-// @Failure      400      {object}  HTTPError "invalid request payload"
-// @Failure      404      {object}  HTTPError "account not found"
-// @Failure      500      {object}  HTTPError
+// @Failure      400      {object}  ErrorResponse "invalid request payload or id format"
+// @Failure      404      {object}  ErrorResponse "account not found"
+// @Failure      500      {object}  ErrorResponse
 // @Router       /api/accounts/{id}/anchor [post]
 // @Security     BearerAuth
 func (h *AccountHandler) SetAnchor(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	id, err := parseIDFromRequest(r)
+	if err != nil {
+		badRequest(w, "invalid id format")
+		return
+	}
 
 	var in SetAnchorRequest
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -107,23 +177,25 @@ func (h *AccountHandler) SetAnchor(w http.ResponseWriter, r *http.Request) {
 
 // Balance godoc
 // @Summary      Get current balance
-// @Description  Returns the current calculated balance of an account based on its anchor and subsequent transactions.
+// @Description  Returns the current calculated balance of an account.
 // @Tags         accounts
 // @Produce      json
 // @Param        id   path      int  true  "Account ID"
 // @Success      200  {object}  BalanceResponse
-// @Failure      404  {object}  HTTPError "account not found"
-// @Failure      500  {object}  HTTPError
+// @Failure      400  {object}  ErrorResponse "invalid id format"
+// @Failure      404  {object}  ErrorResponse "account not found"
+// @Failure      500  {object}  ErrorResponse
 // @Router       /api/accounts/{id}/balance [get]
 // @Security     BearerAuth
 func (h *AccountHandler) Balance(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	id, err := parseIDFromRequest(r)
+	if err != nil {
+		badRequest(w, "invalid id format")
+		return
+	}
+
 	bal, err := h.Store.GetAccountBalance(r.Context(), id)
 	if err != nil {
-		// Your GetAccountBalance query returns 0 for a non-existent ID.
-		// For a more robust API, you could first check if the account exists,
-		// or change the query to error out if the ID is not found.
-		// Assuming the latter for this doc:
 		if errors.Is(err, db.ErrNotFound) {
 			notFound(w)
 			return

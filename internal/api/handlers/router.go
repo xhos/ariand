@@ -2,42 +2,55 @@ package handlers
 
 import (
 	_ "ariand/docs"
+	"ariand/internal/ai"
 	"ariand/internal/db"
+	"ariand/internal/service"
 	"fmt"
 	"net/http"
 
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
-func SetupRoutes(store db.Store) *http.ServeMux {
+func SetupRoutes(
+	store db.Store,
+	aiManager *ai.Manager,
+	categorizer *service.Categorizer,
+) *http.ServeMux {
 	mux := http.NewServeMux()
-	txn := &TransactionHandler{Store: store}
-	acc := &AccountHandler{Store: store}
-	dash := &DashboardHandler{Store: store}
 
 	// transactions
-	mux.Handle("GET    /api/transactions", http.HandlerFunc(txn.List))
-	mux.Handle("POST   /api/transactions", http.HandlerFunc(txn.Create))
-	mux.Handle("GET    /api/transactions/{id}", http.HandlerFunc(txn.Get))
-	mux.Handle("PATCH  /api/transactions/{id}", http.HandlerFunc(txn.Patch))
-	mux.Handle("DELETE /api/transactions/{id}", http.HandlerFunc(txn.Delete))
+	txn := &TransactionHandler{Store: store, Categorizer: categorizer}
+	mux.HandleFunc("GET /api/transactions", txn.List)
+	mux.HandleFunc("POST /api/transactions", txn.Create)
+	mux.HandleFunc("GET /api/transactions/{id}", txn.Get)
+	mux.HandleFunc("PATCH /api/transactions/{id}", txn.Patch)
+	mux.HandleFunc("DELETE /api/transactions/{id}", txn.Delete)
+
+	// categories
+	cat := &CategoryHandler{Store: store}
+	mux.HandleFunc("GET /api/categories", cat.List)
+	mux.HandleFunc("POST /api/categories", cat.Create)
+	mux.HandleFunc("GET /api/categories/{id}", cat.Get)
+	mux.HandleFunc("PATCH /api/categories/{id}", cat.Patch)
+	mux.HandleFunc("DELETE /api/categories/{id}", cat.Delete)
 
 	// dashboard
-	mux.Handle("GET /api/dashboard/balance", http.HandlerFunc(dash.Balance))
-	mux.Handle("GET /api/dashboard/debt", http.HandlerFunc(dash.Debt))
-	mux.Handle("GET /api/dashboard/trends", http.HandlerFunc(dash.Trends))
+	dash := &DashboardHandler{Store: store}
+	mux.HandleFunc("GET /api/dashboard/balance", dash.Balance)
+	mux.HandleFunc("GET /api/dashboard/debt", dash.Debt)
+	mux.HandleFunc("GET /api/dashboard/trends", dash.Trends)
 
 	// accounts
-	mux.Handle("GET    /api/accounts", http.HandlerFunc(acc.List))
-	mux.Handle("GET    /api/accounts/{id}", http.HandlerFunc(acc.Get))
-	mux.Handle("POST   /api/accounts/{id}/anchor", http.HandlerFunc(acc.SetAnchor))
-	mux.Handle("GET    /api/accounts/{id}/balance", http.HandlerFunc(acc.Balance))
+	acc := &AccountHandler{Store: store}
+	mux.HandleFunc("GET /api/accounts", acc.List)
+	mux.HandleFunc("POST /api/accounts", acc.Create)
+	mux.HandleFunc("GET /api/accounts/{id}", acc.Get)
+	mux.HandleFunc("DELETE /api/accounts/{id}", acc.Delete)
+	mux.HandleFunc("POST /api/accounts/{id}/anchor", acc.SetAnchor)
+	mux.HandleFunc("GET /api/accounts/{id}/balance", acc.Balance)
 
-	// docs
-	mux.Handle("/docs/", http.StripPrefix("/docs/", http.FileServer(http.Dir("docs"))))
+	// docs & health
 	mux.Handle("/swagger/", httpSwagger.Handler(httpSwagger.URL("/docs/swagger.json")))
-
-	// health check
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "ok")
