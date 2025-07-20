@@ -36,13 +36,12 @@ func parseQueryDate(q url.Values, key string) (*time.Time, error) {
 // @Failure      500  {object}  ErrorResponse
 // @Router       /api/dashboard/balance [get]
 // @Security     BearerAuth
-func (h *DashboardHandler) Balance(w http.ResponseWriter, r *http.Request) {
+func (h *DashboardHandler) Balance(r *http.Request) (any, *HTTPError) {
 	val, err := h.Store.GetDashboardBalance(r.Context())
 	if err != nil {
-		internalErr(w)
-		return
+		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
-	writeJSON(w, http.StatusOK, BalanceResponse{Balance: val})
+	return BalanceResponse{Balance: val}, nil
 }
 
 // Debt godoc
@@ -54,13 +53,12 @@ func (h *DashboardHandler) Balance(w http.ResponseWriter, r *http.Request) {
 // @Failure      500  {object}  ErrorResponse
 // @Router       /api/dashboard/debt [get]
 // @Security     BearerAuth
-func (h *DashboardHandler) Debt(w http.ResponseWriter, r *http.Request) {
+func (h *DashboardHandler) Debt(r *http.Request) (any, *HTTPError) {
 	val, err := h.Store.GetDashboardDebt(r.Context())
 	if err != nil {
-		internalErr(w)
-		return
+		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
-	writeJSON(w, http.StatusOK, DebtResponse{Debt: val})
+	return DebtResponse{Debt: val}, nil
 }
 
 // Trends godoc
@@ -75,28 +73,25 @@ func (h *DashboardHandler) Debt(w http.ResponseWriter, r *http.Request) {
 // @Failure      500    {object}  ErrorResponse
 // @Router       /api/dashboard/trends [get]
 // @Security     BearerAuth
-func (h *DashboardHandler) Trends(w http.ResponseWriter, r *http.Request) {
+func (h *DashboardHandler) Trends(r *http.Request) (any, *HTTPError) {
 	var err error
 	var opt db.ListOpts
 	q := r.URL.Query()
 
 	opt.Start, err = parseQueryDate(q, "start")
 	if err != nil {
-		badRequest(w, err.Error())
-		return
+		return nil, NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	opt.End, err = parseQueryDate(q, "end")
 	if err != nil {
-		badRequest(w, err.Error())
-		return
+		return nil, NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	data, err := h.Store.GetDashboardTrends(r.Context(), opt)
 	if err != nil {
-		internalErr(w)
-		return
+		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
 
-	writeJSON(w, http.StatusOK, data)
+	return data, nil
 }

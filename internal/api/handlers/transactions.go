@@ -127,11 +127,10 @@ func bindListOptions(q url.Values) (db.ListOpts, error) {
 // @Failure      500          {object} ErrorResponse
 // @Router       /api/transactions [get]
 // @Security     BearerAuth
-func (h *TransactionHandler) List(w http.ResponseWriter, r *http.Request) {
+func (h *TransactionHandler) List(r *http.Request) (any, *HTTPError) {
 	opts, err := bindListOptions(r.URL.Query())
 	if err != nil {
-		badRequest(w, err.Error())
-		return
+		return nil, NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	queryLimit := opts.Limit
@@ -139,8 +138,7 @@ func (h *TransactionHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	out, err := h.Store.ListTransactions(r.Context(), opts)
 	if err != nil {
-		internalErr(w)
-		return
+		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
 
 	var nextCursor *Cursor
@@ -153,10 +151,10 @@ func (h *TransactionHandler) List(w http.ResponseWriter, r *http.Request) {
 		out = out[:queryLimit]
 	}
 
-	writeJSON(w, http.StatusOK, ListTransactionsResponse{
+	return ListTransactionsResponse{
 		Transactions: out,
 		NextCursor:   nextCursor,
-	})
+	}, nil
 }
 
 // Get godoc
@@ -171,24 +169,21 @@ func (h *TransactionHandler) List(w http.ResponseWriter, r *http.Request) {
 // @Failure      500  {object}  ErrorResponse
 // @Router       /api/transactions/{id} [get]
 // @Security     BearerAuth
-func (h *TransactionHandler) Get(w http.ResponseWriter, r *http.Request) {
+func (h *TransactionHandler) Get(r *http.Request) (any, *HTTPError) {
 	id, err := parseIDFromRequest(r)
 	if err != nil {
-		badRequest(w, "invalid id format")
-		return
+		return nil, NewHTTPError(http.StatusBadRequest, "invalid id format")
 	}
 
 	txn, err := h.Store.GetTransaction(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
-			notFound(w)
-			return
+			return nil, NewHTTPError(http.StatusNotFound, "resource not found")
 		}
-		internalErr(w)
-		return
+		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
 
-	writeJSON(w, http.StatusOK, txn)
+	return txn, nil
 }
 
 // Create godoc
@@ -197,29 +192,28 @@ func (h *TransactionHandler) Get(w http.ResponseWriter, r *http.Request) {
 // @Tags         transactions
 // @Accept       json
 // @Produce      json
-// @Param        transaction body     domain.Transaction        true "transaction object"
+// @Param        transaction body      domain.Transaction       true "transaction object"
 // @Success      201         {object} CreateTransactionResponse
 // @Failure      400         {object} ErrorResponse "invalid request body"
 // @Failure      409         {object} ErrorResponse "duplicate transaction"
 // @Failure      500         {object} ErrorResponse
 // @Router       /api/transactions [post]
 // @Security     BearerAuth
-func (h *TransactionHandler) Create(w http.ResponseWriter, r *http.Request) {
+func (h *TransactionHandler) Create(r *http.Request) (any, *HTTPError) {
 	var in domain.Transaction
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-		badRequest(w, "invalid json payload")
-		return
+		return nil, NewHTTPError(http.StatusBadRequest, "invalid json payload")
 	}
 
 	id, err := h.Store.CreateTransaction(r.Context(), &in)
-	switch {
-	case err == nil:
-		writeJSON(w, http.StatusCreated, CreateTransactionResponse{ID: id})
-	case errors.Is(err, db.ErrConflict):
-		writeJSON(w, http.StatusConflict, ErrorResponse{Code: http.StatusConflict, Message: "duplicate transaction"})
-	default:
-		internalErr(w)
+	if err != nil {
+		if errors.Is(err, db.ErrConflict) {
+			return nil, NewHTTPError(http.StatusConflict, "duplicate transaction")
+		}
+		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
+
+	return CreateTransactionResponse{ID: id}, nil
 }
 
 // Patch godoc
@@ -227,37 +221,33 @@ func (h *TransactionHandler) Create(w http.ResponseWriter, r *http.Request) {
 // @Description  partially updates a transaction's fields
 // @Tags         transactions
 // @Accept       json
-// @Param        id      path      int                     true  "transaction id"
-// @Param        fields  body      UpdateTransactionRequest  true  "fields to update"
+// @Param        id     path      int                       true  "transaction id"
+// @Param        fields body      UpdateTransactionRequest  true  "fields to update"
 // @Success      204
-// @Failure      400     {object}  ErrorResponse "invalid request body or id format"
-// @Failure      404     {object}  ErrorResponse "transaction not found"
-// @Failure      500     {object}  ErrorResponse
+// @Failure      400    {object}  ErrorResponse "invalid request body or id format"
+// @Failure      404    {object}  ErrorResponse "transaction not found"
+// @Failure      500    {object}  ErrorResponse
 // @Router       /api/transactions/{id} [patch]
 // @Security     BearerAuth
-func (h *TransactionHandler) Patch(w http.ResponseWriter, r *http.Request) {
+func (h *TransactionHandler) Patch(r *http.Request) (any, *HTTPError) {
 	id, err := parseIDFromRequest(r)
 	if err != nil {
-		badRequest(w, "invalid id format")
-		return
+		return nil, NewHTTPError(http.StatusBadRequest, "invalid id format")
 	}
 
 	var fields map[string]any
 	if err := json.NewDecoder(r.Body).Decode(&fields); err != nil {
-		badRequest(w, "invalid json payload")
-		return
+		return nil, NewHTTPError(http.StatusBadRequest, "invalid json payload")
 	}
 
 	if err := h.Store.UpdateTransaction(r.Context(), id, fields); err != nil {
 		if errors.Is(err, db.ErrNotFound) {
-			notFound(w)
-			return
+			return nil, NewHTTPError(http.StatusNotFound, "resource not found")
 		}
-		internalErr(w)
-		return
+		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	return nil, nil
 }
 
 // Delete godoc
@@ -271,21 +261,115 @@ func (h *TransactionHandler) Patch(w http.ResponseWriter, r *http.Request) {
 // @Failure      500  {object}  ErrorResponse
 // @Router       /api/transactions/{id} [delete]
 // @Security     BearerAuth
-func (h *TransactionHandler) Delete(w http.ResponseWriter, r *http.Request) {
+func (h *TransactionHandler) Delete(r *http.Request) (any, *HTTPError) {
 	id, err := parseIDFromRequest(r)
 	if err != nil {
-		badRequest(w, "invalid id format")
-		return
+		return nil, NewHTTPError(http.StatusBadRequest, "invalid id format")
 	}
 
 	if err := h.Store.DeleteTransaction(r.Context(), id); err != nil {
 		if errors.Is(err, db.ErrNotFound) {
-			notFound(w)
-			return
+			return nil, NewHTTPError(http.StatusNotFound, "resource not found")
 		}
-		internalErr(w)
-		return
+		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	return nil, nil
 }
+
+// Categorize godoc
+// @Summary      categorize a transaction
+// @Description  re-evaluates and updates the category of a transaction based on its description using ai
+// @Tags         transactions
+// @Param        id   path      int  true  "transaction id"
+// @Success      204
+// @Failure      400  {object}  ErrorResponse "invalid id format"
+// @Failure      404  {object}  ErrorResponse "transaction not found"
+// @Failure      500  {object}  ErrorResponse
+// @Router       /api/transactions/{id}/categorize [post]
+// @Security     BearerAuth
+// func (h *TransactionHandler) Categorize(r *http.Request) (any, *HTTPError) {
+// 	id, err := parseIDFromRequest(r)
+// 	if err != nil {
+// 		return nil, NewHTTPError(http.StatusBadRequest, "invalid id format")
+// 	}
+//
+// 	result, err := h.Categorizer.DetermineCategoryForTransaction(r.Context(), id)
+// 	if err != nil {
+// 		if errors.Is(err, db.ErrNotFound) {
+// 			return nil, NewHTTPError(http.StatusNotFound, "resource not found")
+// 		}
+// 		h.Categorizer.Log.Error("failed to determine category", "err", err)
+// 		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
+// 	}
+//
+// 	var categoryID *int64
+// 	if result.CategorySlug != "" {
+// 		cat, err := h.Store.GetCategoryBySlug(r.Context(), result.CategorySlug)
+// 		if err != nil {
+// 			if errors.Is(err, db.ErrNotFound) {
+// 				newID, createErr := h.Store.CreateCategory(r.Context(), result.CategorySlug, result.CategoryLabel, randomHexColor())
+// 				if createErr != nil {
+// 					h.Categorizer.Log.Error("failed to create new category from slug", "err", createErr, "slug", result.CategorySlug)
+// 					return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
+// 				}
+// 				categoryID = &newID
+// 			} else {
+// 				h.Categorizer.Log.Error("failed to get category by slug", "err", err, "slug", result.CategorySlug)
+// 				return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
+// 			}
+// 		} else {
+// 			categoryID = &cat.ID
+// 		}
+// 	}
+//
+// 	fields := map[string]any{
+// 		"category_id": categoryID,
+// 		"cat_status":  result.Status,
+// 		"suggestions": result.Suggestions,
+// 	}
+//
+// 	if err := h.Store.UpdateTransaction(r.Context(), id, fields); err != nil {
+// 		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
+// 	}
+//
+// 	return nil, nil
+// }
+
+// IdentifyMerchant godoc
+// @Summary      identify merchant for a transaction
+// @Description  extracts and updates the merchant name for a transaction based on its description using ai
+// @Tags         transactions
+// @Param        id   path      int  true  "transaction id"
+// @Success      204
+// @Failure      400  {object}  ErrorResponse "invalid id format"
+// @Failure      404  {object}  ErrorResponse "transaction not found"
+// @Failure      500  {object}  ErrorResponse
+// @Router       /api/transactions/{id}/identify-merchant [post]
+// @Security     BearerAuth
+// func (h *TransactionHandler) IdentifyMerchant(r *http.Request) (any, *HTTPError) {
+// 	id, err := parseIDFromRequest(r)
+// 	if err != nil {
+// 		return nil, NewHTTPError(http.StatusBadRequest, "invalid id format")
+// 	}
+//
+// 	merchantName, err := h.Categorizer.DetermineMerchantForTransaction(r.Context(), id)
+// 	if err != nil {
+// 		if errors.Is(err, db.ErrNotFound) {
+// 			return nil, NewHTTPError(http.StatusNotFound, "resource not found")
+// 		}
+// 		h.Categorizer.Log.Error("failed to determine merchant", "err", err)
+// 		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
+// 	}
+//
+// 	if merchantName == "" {
+// 		return nil, nil
+// 	}
+//
+// 	fields := map[string]any{"merchant": merchantName}
+// 	if err := h.Store.UpdateTransaction(r.Context(), id, fields); err != nil {
+// 		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
+// 	}
+//
+// 	return nil, nil
+// }

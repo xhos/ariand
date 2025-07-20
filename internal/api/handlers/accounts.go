@@ -35,11 +35,10 @@ type SetAnchorRequest struct {
 // @Failure      500      {object}  ErrorResponse
 // @Router       /api/accounts [post]
 // @Security     BearerAuth
-func (h *AccountHandler) Create(w http.ResponseWriter, r *http.Request) {
+func (h *AccountHandler) Create(r *http.Request) (any, *HTTPError) {
 	var req CreateAccountRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		badRequest(w, "invalid json")
-		return
+		return nil, NewHTTPError(http.StatusBadRequest, "invalid json")
 	}
 
 	acc := &domain.Account{
@@ -53,11 +52,10 @@ func (h *AccountHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	created, err := h.Store.CreateAccount(r.Context(), acc)
 	if err != nil {
-		internalErr(w)
-		return
+		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
 
-	writeJSON(w, http.StatusCreated, created)
+	return created, nil
 }
 
 // List godoc
@@ -69,13 +67,12 @@ func (h *AccountHandler) Create(w http.ResponseWriter, r *http.Request) {
 // @Failure      500  {object}  ErrorResponse
 // @Router       /api/accounts [get]
 // @Security     BearerAuth
-func (h *AccountHandler) List(w http.ResponseWriter, r *http.Request) {
+func (h *AccountHandler) List(r *http.Request) (any, *HTTPError) {
 	accts, err := h.Store.ListAccounts(r.Context())
 	if err != nil {
-		internalErr(w)
-		return
+		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
-	writeJSON(w, http.StatusOK, accts)
+	return accts, nil
 }
 
 // Get godoc
@@ -90,22 +87,21 @@ func (h *AccountHandler) List(w http.ResponseWriter, r *http.Request) {
 // @Failure      500  {object}  ErrorResponse
 // @Router       /api/accounts/{id} [get]
 // @Security     BearerAuth
-func (h *AccountHandler) Get(w http.ResponseWriter, r *http.Request) {
+func (h *AccountHandler) Get(r *http.Request) (any, *HTTPError) {
 	id, err := parseIDFromRequest(r)
 	if err != nil {
-		badRequest(w, "invalid id format")
-		return
+		return nil, NewHTTPError(http.StatusBadRequest, "invalid id format")
 	}
 
 	acc, err := h.Store.GetAccount(r.Context(), id)
-	switch {
-	case errors.Is(err, db.ErrNotFound):
-		notFound(w)
-	case err != nil:
-		internalErr(w)
-	default:
-		writeJSON(w, http.StatusOK, acc)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			return nil, NewHTTPError(http.StatusNotFound, "resource not found")
+		}
+		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
+
+	return acc, nil
 }
 
 // Delete godoc
@@ -119,22 +115,19 @@ func (h *AccountHandler) Get(w http.ResponseWriter, r *http.Request) {
 // @Failure      500 {object}  ErrorResponse
 // @Router       /api/accounts/{id} [delete]
 // @Security     BearerAuth
-func (h *AccountHandler) Delete(w http.ResponseWriter, r *http.Request) {
+func (h *AccountHandler) Delete(r *http.Request) (any, *HTTPError) {
 	id, err := parseIDFromRequest(r)
 	if err != nil {
-		badRequest(w, "invalid id format")
-		return
+		return nil, NewHTTPError(http.StatusBadRequest, "invalid id format")
 	}
 
 	if err := h.Store.DeleteAccount(r.Context(), id); err != nil {
 		if errors.Is(err, db.ErrNotFound) {
-			notFound(w)
-			return
+			return nil, NewHTTPError(http.StatusNotFound, "resource not found")
 		}
-		internalErr(w)
-		return
+		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
-	w.WriteHeader(http.StatusNoContent)
+	return nil, nil
 }
 
 // SetAnchor godoc
@@ -150,29 +143,25 @@ func (h *AccountHandler) Delete(w http.ResponseWriter, r *http.Request) {
 // @Failure      500      {object}  ErrorResponse
 // @Router       /api/accounts/{id}/anchor [post]
 // @Security     BearerAuth
-func (h *AccountHandler) SetAnchor(w http.ResponseWriter, r *http.Request) {
+func (h *AccountHandler) SetAnchor(r *http.Request) (any, *HTTPError) {
 	id, err := parseIDFromRequest(r)
 	if err != nil {
-		badRequest(w, "invalid id format")
-		return
+		return nil, NewHTTPError(http.StatusBadRequest, "invalid id format")
 	}
 
 	var in SetAnchorRequest
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-		badRequest(w, "invalid json payload")
-		return
+		return nil, NewHTTPError(http.StatusBadRequest, "invalid json payload")
 	}
 
 	if err := h.Store.SetAccountAnchor(r.Context(), id, in.Balance); err != nil {
 		if errors.Is(err, db.ErrNotFound) {
-			notFound(w)
-			return
+			return nil, NewHTTPError(http.StatusNotFound, "resource not found")
 		}
-		internalErr(w)
-		return
+		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	return nil, nil
 }
 
 // Balance godoc
@@ -187,22 +176,19 @@ func (h *AccountHandler) SetAnchor(w http.ResponseWriter, r *http.Request) {
 // @Failure      500  {object}  ErrorResponse
 // @Router       /api/accounts/{id}/balance [get]
 // @Security     BearerAuth
-func (h *AccountHandler) Balance(w http.ResponseWriter, r *http.Request) {
+func (h *AccountHandler) Balance(r *http.Request) (any, *HTTPError) {
 	id, err := parseIDFromRequest(r)
 	if err != nil {
-		badRequest(w, "invalid id format")
-		return
+		return nil, NewHTTPError(http.StatusBadRequest, "invalid id format")
 	}
 
 	bal, err := h.Store.GetAccountBalance(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
-			notFound(w)
-			return
+			return nil, NewHTTPError(http.StatusNotFound, "resource not found")
 		}
-		internalErr(w)
-		return
+		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
 
-	writeJSON(w, http.StatusOK, BalanceResponse{Balance: bal})
+	return BalanceResponse{Balance: bal}, nil
 }

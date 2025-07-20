@@ -15,6 +15,67 @@ type ErrorResponse struct {
 	Message string `json:"message" example:"resource not found"`
 }
 
+// HTTPError represents an error with an associated HTTP status code.
+type HTTPError struct {
+	Code    int
+	Message string
+}
+
+// Error makes it compatible with the error interface.
+func (e *HTTPError) Error() string {
+	return e.Message
+}
+
+// Write sends the error as a JSON response.
+func (e *HTTPError) Write(w http.ResponseWriter) {
+	errResp := ErrorResponse{Code: e.Code, Message: e.Message}
+	writeJSON(w, e.Code, errResp)
+}
+
+// NewHTTPError is a constructor for HTTPError.
+func NewHTTPError(code int, message string) *HTTPError {
+	return &HTTPError{Code: code, Message: message}
+}
+
+// APIFunc is a handler that returns a value to be JSON encoded or an error.
+type APIFunc func(r *http.Request) (any, *HTTPError)
+
+// HandleGet converts an APIFunc to an http.HandlerFunc for GET requests (200 OK).
+func HandleGet(fn APIFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := fn(r)
+		if err != nil {
+			err.Write(w)
+			return
+		}
+		writeJSON(w, http.StatusOK, data)
+	}
+}
+
+// HandleCreate converts an APIFunc to an http.HandlerFunc for POST requests (201 Created).
+func HandleCreate(fn APIFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := fn(r)
+		if err != nil {
+			err.Write(w)
+			return
+		}
+		writeJSON(w, http.StatusCreated, data)
+	}
+}
+
+// HandleUpdate converts an APIFunc to an http.HandlerFunc for PATCH/POST/DELETE requests (204 No Content).
+func HandleUpdate(fn APIFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		_, err := fn(r) // data is ignored
+		if err != nil {
+			err.Write(w)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 // BalanceResponse is a generic response for endpoints returning a single balance value
 type BalanceResponse struct {
 	Balance float64 `json:"balance" example:"1234.56"`
@@ -27,24 +88,6 @@ func writeJSON(w http.ResponseWriter, status int, data any) {
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		log.Errorf("failed to write json response: %v", err)
 	}
-}
-
-// badRequest sends a 400 bad request response
-func badRequest(w http.ResponseWriter, message string) {
-	err := ErrorResponse{Code: http.StatusBadRequest, Message: message}
-	writeJSON(w, http.StatusBadRequest, err)
-}
-
-// notFound sends a 404 not found response
-func notFound(w http.ResponseWriter) {
-	err := ErrorResponse{Code: http.StatusNotFound, Message: "resource not found"}
-	writeJSON(w, http.StatusNotFound, err)
-}
-
-// internalErr sends a 500 internal server error response
-func internalErr(w http.ResponseWriter) {
-	err := ErrorResponse{Code: http.StatusInternalServerError, Message: "internal server error"}
-	writeJSON(w, http.StatusInternalServerError, err)
 }
 
 // parseIDFromRequest extracts and validates the numeric id from the url path
