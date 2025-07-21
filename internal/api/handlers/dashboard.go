@@ -2,13 +2,16 @@ package handlers
 
 import (
 	"ariand/internal/db"
+	"ariand/internal/service"
 	"fmt"
 	"net/http"
 	"net/url"
 	"time"
 )
 
-type DashboardHandler struct{ Store db.Store }
+type DashboardHandler struct {
+	service service.DashboardService
+}
 
 type DebtResponse struct {
 	Debt float64 `json:"debt" example:"2550.75"`
@@ -37,11 +40,11 @@ func parseQueryDate(q url.Values, key string) (*time.Time, error) {
 // @Router       /api/dashboard/balance [get]
 // @Security     BearerAuth
 func (h *DashboardHandler) Balance(r *http.Request) (any, *HTTPError) {
-	val, err := h.Store.GetDashboardBalance(r.Context())
+	v, err := h.service.Balance(r.Context())
 	if err != nil {
 		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
-	return BalanceResponse{Balance: val}, nil
+	return BalanceResponse{Balance: v}, nil
 }
 
 // Debt godoc
@@ -54,11 +57,11 @@ func (h *DashboardHandler) Balance(r *http.Request) (any, *HTTPError) {
 // @Router       /api/dashboard/debt [get]
 // @Security     BearerAuth
 func (h *DashboardHandler) Debt(r *http.Request) (any, *HTTPError) {
-	val, err := h.Store.GetDashboardDebt(r.Context())
+	v, err := h.service.Debt(r.Context())
 	if err != nil {
 		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
-	return DebtResponse{Debt: val}, nil
+	return DebtResponse{Debt: v}, nil
 }
 
 // Trends godoc
@@ -88,7 +91,7 @@ func (h *DashboardHandler) Trends(r *http.Request) (any, *HTTPError) {
 		return nil, NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	data, err := h.Store.GetDashboardTrends(r.Context(), opt)
+	data, err := h.service.Trends(r.Context(), opt)
 	if err != nil {
 		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}

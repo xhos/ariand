@@ -2,7 +2,6 @@
 package handlers
 
 import (
-	"ariand/internal/ai"
 	"ariand/internal/api/middleware"
 	"ariand/internal/db/postgres"
 	"ariand/internal/service"
@@ -120,7 +119,7 @@ func (l *colorfulLoggerAdapter) Log(ctx context.Context, level tracelog.LogLevel
 		delete(data, "sql")
 	}
 
-	keyvals := make([]interface{}, 0, len(data)*2)
+	keyvals := make([]any, 0, len(data)*2)
 	for k, v := range data {
 		keyvals = append(keyvals, k, v)
 	}
@@ -154,9 +153,7 @@ func newTestApp(t *testing.T) (*testApp, func()) {
 	store, err := postgres.NewFromDB(sqlxDB)
 	require.NoError(t, err, "failed to create store from DB")
 
-	aiManager := ai.GetManager()
-	categorizer := &service.Categorizer{Store: store, Log: testLogger.WithPrefix("🧠 categorizer")}
-	router := SetupRoutes(store, aiManager, categorizer)
+	router := SetupRoutes(service.New(store, testLogger))
 
 	const testAPIKey = "test-api-key"
 	stack := middleware.CreateStack(

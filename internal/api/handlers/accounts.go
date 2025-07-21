@@ -3,13 +3,16 @@ package handlers
 import (
 	"ariand/internal/db"
 	"ariand/internal/domain"
+	"ariand/internal/service"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
 )
 
-type AccountHandler struct{ Store db.Store }
+type AccountHandler struct {
+	service service.AccountService
+}
 
 type CreateAccountRequest struct {
 	Name          string  `json:"name" example:"main chequing"`
@@ -41,7 +44,7 @@ func (h *AccountHandler) Create(r *http.Request) (any, *HTTPError) {
 		return nil, NewHTTPError(http.StatusBadRequest, "invalid json")
 	}
 
-	acc := &domain.Account{
+	account := &domain.Account{
 		Name:          req.Name,
 		Bank:          req.Bank,
 		Type:          req.Type,
@@ -50,7 +53,7 @@ func (h *AccountHandler) Create(r *http.Request) (any, *HTTPError) {
 		AnchorBalance: req.AnchorBalance,
 	}
 
-	created, err := h.Store.CreateAccount(r.Context(), acc)
+	created, err := h.service.Create(r.Context(), account)
 	if err != nil {
 		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
@@ -68,11 +71,14 @@ func (h *AccountHandler) Create(r *http.Request) (any, *HTTPError) {
 // @Router       /api/accounts [get]
 // @Security     BearerAuth
 func (h *AccountHandler) List(r *http.Request) (any, *HTTPError) {
-	accts, err := h.Store.ListAccounts(r.Context())
+	accounts, err := h.service.List(r.Context())
 	if err != nil {
-		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
+		return nil, NewHTTPError(
+			http.StatusInternalServerError,
+			"internal server error",
+		)
 	}
-	return accts, nil
+	return accounts, nil
 }
 
 // Get godoc
@@ -93,7 +99,7 @@ func (h *AccountHandler) Get(r *http.Request) (any, *HTTPError) {
 		return nil, NewHTTPError(http.StatusBadRequest, "invalid id format")
 	}
 
-	acc, err := h.Store.GetAccount(r.Context(), id)
+	account, err := h.service.Get(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return nil, NewHTTPError(http.StatusNotFound, "resource not found")
@@ -101,7 +107,7 @@ func (h *AccountHandler) Get(r *http.Request) (any, *HTTPError) {
 		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
 
-	return acc, nil
+	return account, nil
 }
 
 // Delete godoc
@@ -121,12 +127,13 @@ func (h *AccountHandler) Delete(r *http.Request) (any, *HTTPError) {
 		return nil, NewHTTPError(http.StatusBadRequest, "invalid id format")
 	}
 
-	if err := h.Store.DeleteAccount(r.Context(), id); err != nil {
+	if err := h.service.Delete(r.Context(), id); err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return nil, NewHTTPError(http.StatusNotFound, "resource not found")
 		}
 		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
+
 	return nil, nil
 }
 
@@ -154,7 +161,7 @@ func (h *AccountHandler) SetAnchor(r *http.Request) (any, *HTTPError) {
 		return nil, NewHTTPError(http.StatusBadRequest, "invalid json payload")
 	}
 
-	if err := h.Store.SetAccountAnchor(r.Context(), id, in.Balance); err != nil {
+	if err := h.service.SetAnchor(r.Context(), id, in.Balance); err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return nil, NewHTTPError(http.StatusNotFound, "resource not found")
 		}
@@ -182,7 +189,7 @@ func (h *AccountHandler) Balance(r *http.Request) (any, *HTTPError) {
 		return nil, NewHTTPError(http.StatusBadRequest, "invalid id format")
 	}
 
-	bal, err := h.Store.GetAccountBalance(r.Context(), id)
+	bal, err := h.service.Balance(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return nil, NewHTTPError(http.StatusNotFound, "resource not found")

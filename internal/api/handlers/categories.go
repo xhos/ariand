@@ -2,12 +2,15 @@ package handlers
 
 import (
 	"ariand/internal/db"
+	"ariand/internal/service"
 	"encoding/json"
 	"errors"
 	"net/http"
 )
 
-type CategoryHandler struct{ Store db.Store }
+type CategoryHandler struct {
+	service service.CategoryService
+}
 
 // List godoc
 // @Summary      List all categories
@@ -18,8 +21,8 @@ type CategoryHandler struct{ Store db.Store }
 // @Failure      500  {object}  ErrorResponse
 // @Router       /api/categories [get]
 // @Security     BearerAuth
-func (h *CategoryHandler) List(r *http.Request) (any, *HTTPError) {
-	categories, err := h.Store.ListCategories(r.Context())
+func (handler *CategoryHandler) List(r *http.Request) (any, *HTTPError) {
+	categories, err := handler.service.List(r.Context())
 	if err != nil {
 		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
@@ -38,13 +41,13 @@ func (h *CategoryHandler) List(r *http.Request) (any, *HTTPError) {
 // @Failure      500  {object}  ErrorResponse
 // @Router       /api/categories/{id} [get]
 // @Security     BearerAuth
-func (h *CategoryHandler) Get(r *http.Request) (any, *HTTPError) {
+func (handler *CategoryHandler) Get(r *http.Request) (any, *HTTPError) {
 	id, err := parseIDFromRequest(r)
 	if err != nil {
 		return nil, NewHTTPError(http.StatusBadRequest, "invalid id format")
 	}
 
-	category, err := h.Store.GetCategory(r.Context(), id)
+	cat, err := handler.service.Get(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return nil, NewHTTPError(http.StatusNotFound, "resource not found")
@@ -52,7 +55,7 @@ func (h *CategoryHandler) Get(r *http.Request) (any, *HTTPError) {
 		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
 
-	return category, nil
+	return cat, nil
 }
 
 type CreateCategoryRequest struct {
@@ -77,7 +80,7 @@ type CreateCategoryResponse struct {
 // @Failure      500      {object}  ErrorResponse
 // @Router       /api/categories [post]
 // @Security     BearerAuth
-func (h *CategoryHandler) Create(r *http.Request) (any, *HTTPError) {
+func (handler *CategoryHandler) Create(r *http.Request) (any, *HTTPError) {
 	var in CreateCategoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		return nil, NewHTTPError(http.StatusBadRequest, "invalid json")
@@ -87,7 +90,13 @@ func (h *CategoryHandler) Create(r *http.Request) (any, *HTTPError) {
 		in.Color = randomHexColor()
 	}
 
-	id, err := h.Store.CreateCategory(r.Context(), in.Slug, in.Label, in.Color)
+	id, err := handler.service.Create(
+		r.Context(),
+		in.Slug,
+		in.Label,
+		in.Color,
+	)
+
 	if err != nil {
 		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
@@ -110,18 +119,18 @@ type UpdateCategoryRequest map[string]any
 // @Failure      500  {object}  ErrorResponse
 // @Router       /api/categories/{id} [patch]
 // @Security     BearerAuth
-func (h *CategoryHandler) Patch(r *http.Request) (any, *HTTPError) {
+func (handler *CategoryHandler) Patch(r *http.Request) (any, *HTTPError) {
 	id, err := parseIDFromRequest(r)
 	if err != nil {
 		return nil, NewHTTPError(http.StatusBadRequest, "invalid id format")
 	}
 
-	var fields map[string]any
+	var fields UpdateCategoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&fields); err != nil {
 		return nil, NewHTTPError(http.StatusBadRequest, "invalid json")
 	}
 
-	if err := h.Store.UpdateCategory(r.Context(), id, fields); err != nil {
+	if err := handler.service.Update(r.Context(), id, fields); err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return nil, NewHTTPError(http.StatusNotFound, "resource not found")
 		}
@@ -142,13 +151,13 @@ func (h *CategoryHandler) Patch(r *http.Request) (any, *HTTPError) {
 // @Failure      500 {object}  ErrorResponse
 // @Router       /api/categories/{id} [delete]
 // @Security     BearerAuth
-func (h *CategoryHandler) Delete(r *http.Request) (any, *HTTPError) {
+func (handler *CategoryHandler) Delete(r *http.Request) (any, *HTTPError) {
 	id, err := parseIDFromRequest(r)
 	if err != nil {
 		return nil, NewHTTPError(http.StatusBadRequest, "invalid id format")
 	}
 
-	if err := h.Store.DeleteCategory(r.Context(), id); err != nil {
+	if err := handler.service.Delete(r.Context(), id); err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return nil, NewHTTPError(http.StatusNotFound, "resource not found")
 		}

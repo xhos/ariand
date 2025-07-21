@@ -695,6 +695,60 @@ const docTemplate = `{
                         "description": "comma-separated list of account ids",
                         "name": "account_ids",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter by start date (yyyy-mm-dd)",
+                        "name": "start_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter by end date (yyyy-mm-dd)",
+                        "name": "end_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "filter by minimum amount",
+                        "name": "amount_min",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "filter by maximum amount",
+                        "name": "amount_max",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "comma-separated list of category slugs",
+                        "name": "categories",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "search merchant name (case-insensitive)",
+                        "name": "merchant",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "search description (case-insensitive)",
+                        "name": "description",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter by currency code (e.g., CAD)",
+                        "name": "currency",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter by direction ('in' or 'out')",
+                        "name": "direction",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -907,6 +961,98 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "invalid request body or id format",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "transaction not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/transactions/{id}/categorize": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "re-evaluates and updates the category of a transaction based on its description using AI",
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "categorize a transaction",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "transaction id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "invalid id format",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "transaction not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/transactions/{id}/identify-merchant": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "extracts and updates the merchant name for a transaction based on its description using AI",
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "identify merchant for a transaction",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "transaction id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "invalid id format",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }

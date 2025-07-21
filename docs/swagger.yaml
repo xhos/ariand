@@ -607,6 +607,42 @@ paths:
         in: query
         name: account_ids
         type: string
+      - description: filter by start date (yyyy-mm-dd)
+        in: query
+        name: start_date
+        type: string
+      - description: filter by end date (yyyy-mm-dd)
+        in: query
+        name: end_date
+        type: string
+      - description: filter by minimum amount
+        in: query
+        name: amount_min
+        type: number
+      - description: filter by maximum amount
+        in: query
+        name: amount_max
+        type: number
+      - description: comma-separated list of category slugs
+        in: query
+        name: categories
+        type: string
+      - description: search merchant name (case-insensitive)
+        in: query
+        name: merchant
+        type: string
+      - description: search description (case-insensitive)
+        in: query
+        name: description
+        type: string
+      - description: filter by currency code (e.g., CAD)
+        in: query
+        name: currency
+        type: string
+      - description: filter by direction ('in' or 'out')
+        in: query
+        name: direction
+        type: string
       produces:
       - application/json
       responses:
@@ -757,6 +793,66 @@ paths:
       security:
       - BearerAuth: []
       summary: update a transaction
+      tags:
+      - transactions
+  /api/transactions/{id}/categorize:
+    post:
+      description: re-evaluates and updates the category of a transaction based on
+        its description using AI
+      parameters:
+      - description: transaction id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: invalid id format
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: transaction not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: categorize a transaction
+      tags:
+      - transactions
+  /api/transactions/{id}/identify-merchant:
+    post:
+      description: extracts and updates the merchant name for a transaction based
+        on its description using AI
+      parameters:
+      - description: transaction id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: invalid id format
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: transaction not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: identify merchant for a transaction
       tags:
       - transactions
 securityDefinitions:
