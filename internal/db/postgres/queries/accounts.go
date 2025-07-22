@@ -20,8 +20,8 @@ func NewAccounts(db *sqlx.DB) *Accounts {
 
 func (q *Accounts) CreateAccount(ctx context.Context, acc *domain.Account) (*domain.Account, error) {
 	query := `
-		INSERT INTO accounts (name, bank, type, anchor_date, anchor_balance, alias)
-		VALUES (:name, :bank, :type, :anchor_date, :anchor_balance, :alias)
+		INSERT INTO accounts (name, bank, account_type, anchor_date, anchor_balance, alias)
+		VALUES (:name, :bank, :account_type, :anchor_date, :anchor_balance, :alias)
 		RETURNING *
 	`
 	var createdAccount domain.Account

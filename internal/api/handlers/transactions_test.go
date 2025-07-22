@@ -25,10 +25,10 @@ func TestTransactionHandlers(t *testing.T) {
 
 	truncateTables(t, app.db.DB, "transactions", "categories", "accounts")
 
-	acc1, err := app.db.CreateAccount(ctx, &domain.Account{Name: "Test Chequing", Type: "Chequing", Bank: "Bank A", AnchorBalance: 1000, AnchorDate: time.Now()})
+	acc1, err := app.db.CreateAccount(ctx, &domain.Account{Name: "Test Chequing", Type: "chequing", Bank: "Bank A", AnchorBalance: 1000, AnchorDate: time.Now()})
 	require.NoError(t, err)
 
-	acc2, err := app.db.CreateAccount(ctx, &domain.Account{Name: "Test Visa", Type: "Credit Card", Bank: "Bank B", AnchorBalance: -500, AnchorDate: time.Now()})
+	acc2, err := app.db.CreateAccount(ctx, &domain.Account{Name: "Test Visa", Type: "credit_card", Bank: "Bank B", AnchorBalance: -500, AnchorDate: time.Now()})
 	require.NoError(t, err)
 
 	cat1ID, err := app.db.CreateCategory(ctx, "food.groceries", "Groceries", "#ff0000")
@@ -39,8 +39,9 @@ func TestTransactionHandlers(t *testing.T) {
 
 		t.Run("create", func(t *testing.T) {
 			desc := "Superstore Groceries"
+			emailID := "unique-email-1"
 			payload := domain.Transaction{
-				EmailID:     "unique-email-1",
+				EmailID:     &emailID,
 				AccountID:   acc1.ID,
 				TxDate:      time.Now(),
 				TxAmount:    55.43,
@@ -66,8 +67,9 @@ func TestTransactionHandlers(t *testing.T) {
 		})
 
 		t.Run("create duplicate", func(t *testing.T) {
+			emailID := "unique-email-1"
 			payload := domain.Transaction{
-				EmailID:     "unique-email-1",
+				EmailID:     &emailID,
 				AccountID:   acc1.ID,
 				TxAmount:    1.0,
 				TxCurrency:  "CAD",
@@ -116,9 +118,11 @@ func TestTransactionHandlers(t *testing.T) {
 		})
 
 		t.Run("list and filter", func(t *testing.T) {
-			_, err := app.db.CreateTransaction(ctx, &domain.Transaction{EmailID: "tx2", AccountID: acc1.ID, TxDate: time.Now(), TxAmount: 1200.00, TxDirection: "in", TxCurrency: "CAD"})
+			tx2EmailID := "tx2"
+			tx3EmailID := "tx3"
+			_, err := app.db.CreateTransaction(ctx, &domain.Transaction{EmailID: &tx2EmailID, AccountID: acc1.ID, TxDate: time.Now(), TxAmount: 1200.00, TxDirection: "in", TxCurrency: "CAD"})
 			require.NoError(t, err)
-			_, err = app.db.CreateTransaction(ctx, &domain.Transaction{EmailID: "tx3", AccountID: acc2.ID, TxDate: time.Now(), TxAmount: 99.99, TxDirection: "out", TxCurrency: "CAD"})
+			_, err = app.db.CreateTransaction(ctx, &domain.Transaction{EmailID: &tx3EmailID, AccountID: acc2.ID, TxDate: time.Now(), TxAmount: 99.99, TxDirection: "out", TxCurrency: "CAD"})
 			require.NoError(t, err)
 
 			u, _ := url.Parse("/api/transactions")

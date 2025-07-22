@@ -133,7 +133,7 @@ func TestCategoryHandlers(t *testing.T) {
 
 				opts := []cmp.Option{
 					cmpopts.IgnoreMapEntries(func(key string, val any) bool {
-						return key == "id"
+						return key == "id" || key == "createdAt" || key == "updatedAt"
 					}),
 				}
 				opts = append(opts, tc.cmpOpts...)

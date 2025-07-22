@@ -205,9 +205,11 @@ func (q *Transactions) CreateTransaction(ctx context.Context, t *domain.Transact
 	}
 
 	if t.TxDirection == "in" {
-		t.BalanceAfter = currentBalance + t.TxAmount
+		balance := currentBalance + t.TxAmount
+		t.BalanceAfter = &balance
 	} else {
-		t.BalanceAfter = currentBalance - t.TxAmount
+		balance := currentBalance - t.TxAmount
+		t.BalanceAfter = &balance
 	}
 
 	query := `

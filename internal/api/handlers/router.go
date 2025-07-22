@@ -46,7 +46,7 @@ func SetupRoutes(services *service.Services) *http.ServeMux {
 	mux.HandleFunc("GET /api/accounts/{id}/balance", HandleGet(accH.Balance))
 
 	// swagger & health
-	mux.Handle("/swagger/", httpSwagger.Handler())
+	mux.Handle("/swagger/", httpSwagger.Handler(httpSwagger.PersistAuthorization(true)))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "ok")

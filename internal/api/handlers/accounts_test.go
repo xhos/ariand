@@ -107,7 +107,7 @@ func TestAccountHandlers(t *testing.T) {
 				require.NoError(t, err, "failed to unmarshal wantBody")
 
 				opts := cmpopts.IgnoreMapEntries(func(key string, val any) bool {
-					return key == "id" || key == "anchorDate" || key == "createdAt"
+					return key == "id" || key == "anchorDate" || key == "createdAt" || key == "updatedAt"
 				})
 
 				diff := cmp.Diff(want, got, opts)

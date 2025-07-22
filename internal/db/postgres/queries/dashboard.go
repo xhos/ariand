@@ -53,7 +53,7 @@ func (q *Dashboard) GetDashboardDebt(ctx context.Context) (float64, error) {
 			FROM transactions t
 			WHERE t.account_id = a.id AND t.tx_date > a.anchor_date
 		) d ON TRUE
-		WHERE LOWER(a.type) = 'credit card'
+		WHERE a.account_type = 'credit_card'
 	`
 	err := q.db.GetContext(ctx, &v, query)
 	return v, err

@@ -28,30 +28,30 @@ func TestDashboardHandlers(t *testing.T) {
 	yesterday := today.AddDate(0, 0, -1)
 
 	chequing, err := app.db.CreateAccount(ctx, &domain.Account{
-		Name: "Chequing Account", Bank: "Test Bank", Type: "Chequing",
+		Name: "Chequing Account", Bank: "Test Bank", Type: "chequing",
 		AnchorDate: anchorDate, AnchorBalance: 1200.50,
 	})
 	require.NoError(t, err)
 
 	visa, err := app.db.CreateAccount(ctx, &domain.Account{
-		Name: "Visa Card", Bank: "Credit Corp", Type: "Credit Card",
+		Name: "Visa Card", Bank: "Credit Corp", Type: "credit_card",
 		AnchorDate: anchorDate, AnchorBalance: -250.25,
 	})
 	require.NoError(t, err)
 
 	amex, err := app.db.CreateAccount(ctx, &domain.Account{
-		Name: "Amex Card", Bank: "Credit Corp", Type: "Credit Card",
+		Name: "Amex Card", Bank: "Credit Corp", Type: "credit_card",
 		AnchorDate: anchorDate, AnchorBalance: -1300.00,
 	})
 	require.NoError(t, err)
 
-	_, err = app.db.CreateTransaction(ctx, &domain.Transaction{EmailID: "tx1", AccountID: chequing.ID, TxDate: today, TxAmount: 100.00, TxCurrency: "CAD", TxDirection: "in"})
+	_, err = app.db.CreateTransaction(ctx, &domain.Transaction{EmailID: &[]string{"tx1"}[0], AccountID: chequing.ID, TxDate: today, TxAmount: 100.00, TxCurrency: "CAD", TxDirection: "in"})
 	require.NoError(t, err)
-	_, err = app.db.CreateTransaction(ctx, &domain.Transaction{EmailID: "tx2", AccountID: chequing.ID, TxDate: yesterday, TxAmount: 25.50, TxCurrency: "CAD", TxDirection: "out"})
+	_, err = app.db.CreateTransaction(ctx, &domain.Transaction{EmailID: &[]string{"tx2"}[0], AccountID: chequing.ID, TxDate: yesterday, TxAmount: 25.50, TxCurrency: "CAD", TxDirection: "out"})
 	require.NoError(t, err)
-	_, err = app.db.CreateTransaction(ctx, &domain.Transaction{EmailID: "tx3", AccountID: visa.ID, TxDate: today, TxAmount: 40.10, TxCurrency: "CAD", TxDirection: "out"})
+	_, err = app.db.CreateTransaction(ctx, &domain.Transaction{EmailID: &[]string{"tx3"}[0], AccountID: visa.ID, TxDate: today, TxAmount: 40.10, TxCurrency: "CAD", TxDirection: "out"})
 	require.NoError(t, err)
-	_, err = app.db.CreateTransaction(ctx, &domain.Transaction{EmailID: "tx4", AccountID: amex.ID, TxDate: yesterday, TxAmount: 80.00, TxCurrency: "CAD", TxDirection: "out"})
+	_, err = app.db.CreateTransaction(ctx, &domain.Transaction{EmailID: &[]string{"tx4"}[0], AccountID: amex.ID, TxDate: yesterday, TxAmount: 80.00, TxCurrency: "CAD", TxDirection: "out"})
 	require.NoError(t, err)
 
 	testCases := []struct {

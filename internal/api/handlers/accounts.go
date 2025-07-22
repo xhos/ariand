@@ -47,7 +47,7 @@ func (h *AccountHandler) Create(r *http.Request) (any, *HTTPError) {
 	account := &domain.Account{
 		Name:          req.Name,
 		Bank:          req.Bank,
-		Type:          req.Type,
+		Type:          domain.AccountType(req.Type),
 		Alias:         req.Alias,
 		AnchorDate:    time.Now(),
 		AnchorBalance: req.AnchorBalance,
