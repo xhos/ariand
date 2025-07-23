@@ -655,6 +655,55 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/receipts/parse": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Uploads a receipt image (JPEG or PNG) and returns the parsed, structured data.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "receipts"
+                ],
+                "summary": "Parse a receipt image",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Receipt image file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/service.Receipt"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/transactions": {
             "get": {
                 "security": [
@@ -1099,14 +1148,37 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "type": {
+                    "$ref": "#/definitions/domain.AccountType"
+                },
+                "updatedAt": {
                     "type": "string"
                 }
             }
+        },
+        "domain.AccountType": {
+            "type": "string",
+            "enum": [
+                "chequing",
+                "savings",
+                "credit_card",
+                "investment",
+                "other"
+            ],
+            "x-enum-varnames": [
+                "AccountTypeChequing",
+                "AccountTypeSavings",
+                "AccountTypeCreditCard",
+                "AccountTypeInvestment",
+                "AccountTypeOther"
+            ]
         },
         "domain.Category": {
             "type": "object",
             "properties": {
                 "color": {
+                    "type": "string"
+                },
+                "createdAt": {
                     "type": "string"
                 },
                 "id": {
@@ -1116,6 +1188,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "slug": {
+                    "type": "string"
+                },
+                "updatedAt": {
                     "type": "string"
                 }
             }
@@ -1138,6 +1213,9 @@ const docTemplate = `{
                 "categorySlug": {
                     "type": "string"
                 },
+                "createdAt": {
+                    "type": "string"
+                },
                 "emailId": {
                     "type": "string"
                 },
@@ -1155,6 +1233,9 @@ const docTemplate = `{
                 },
                 "merchant": {
                     "type": "string"
+                },
+                "receiptId": {
+                    "type": "integer"
                 },
                 "suggestions": {
                     "type": "array",
@@ -1175,6 +1256,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "txDirection": {
+                    "type": "string"
+                },
+                "updatedAt": {
                     "type": "string"
                 },
                 "userNotes": {
@@ -1328,6 +1412,37 @@ const docTemplate = `{
         "handlers.UpdateTransactionRequest": {
             "type": "object",
             "additionalProperties": {}
+        },
+        "service.Receipt": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "price": {
+                                "type": "number"
+                            },
+                            "qty": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                },
+                "merchant": {
+                    "type": "string"
+                },
+                "total": {
+                    "type": "number"
+                }
+            }
         }
     },
     "securityDefinitions": {

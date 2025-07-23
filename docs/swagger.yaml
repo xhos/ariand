@@ -17,17 +17,37 @@ definitions:
       name:
         type: string
       type:
+        $ref: '#/definitions/domain.AccountType'
+      updatedAt:
         type: string
     type: object
+  domain.AccountType:
+    enum:
+    - chequing
+    - savings
+    - credit_card
+    - investment
+    - other
+    type: string
+    x-enum-varnames:
+    - AccountTypeChequing
+    - AccountTypeSavings
+    - AccountTypeCreditCard
+    - AccountTypeInvestment
+    - AccountTypeOther
   domain.Category:
     properties:
       color:
+        type: string
+      createdAt:
         type: string
       id:
         type: integer
       label:
         type: string
       slug:
+        type: string
+      updatedAt:
         type: string
     type: object
   domain.Transaction:
@@ -42,6 +62,8 @@ definitions:
         type: integer
       categorySlug:
         type: string
+      createdAt:
+        type: string
       emailId:
         type: string
       exchangeRate:
@@ -54,6 +76,8 @@ definitions:
         type: integer
       merchant:
         type: string
+      receiptId:
+        type: integer
       suggestions:
         items:
           type: string
@@ -67,6 +91,8 @@ definitions:
       txDesc:
         type: string
       txDirection:
+        type: string
+      updatedAt:
         type: string
       userNotes:
         type: string
@@ -170,6 +196,26 @@ definitions:
     type: object
   handlers.UpdateTransactionRequest:
     additionalProperties: {}
+    type: object
+  service.Receipt:
+    properties:
+      date:
+        type: string
+      items:
+        items:
+          properties:
+            name:
+              type: string
+            price:
+              type: number
+            qty:
+              type: integer
+          type: object
+        type: array
+      merchant:
+        type: string
+      total:
+        type: number
     type: object
 info:
   contact: {}
@@ -586,6 +632,38 @@ paths:
       summary: Get income & expense trends
       tags:
       - dashboard
+  /api/receipts/parse:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads a receipt image (JPEG or PNG) and returns the parsed, structured
+        data.
+      parameters:
+      - description: Receipt image file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.Receipt'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Parse a receipt image
+      tags:
+      - receipts
   /api/transactions:
     get:
       description: returns a paginated and filtered list of transactions
