@@ -52,6 +52,7 @@ type Store interface {
 	ListAccounts(ctx context.Context) ([]domain.Account, error)
 	GetAccount(ctx context.Context, id int64) (*domain.Account, error)
 	CreateAccount(ctx context.Context, acc *domain.Account) (*domain.Account, error)
+	UpdateAccount(ctx context.Context, id int64, fields map[string]any) error
 	DeleteAccount(ctx context.Context, id int64) error
 	SetAccountAnchor(ctx context.Context, accountID int64, balance float64) error
 	GetAccountBalance(ctx context.Context, accountID int64) (float64, error)
@@ -64,4 +65,11 @@ type Store interface {
 	DeleteCategory(ctx context.Context, id int64) error
 	ListCategorySlugs(ctx context.Context) ([]string, error)
 	GetCategoryBySlug(ctx context.Context, slug string) (*domain.Category, error)
+
+	// receipt methods
+	GetReceipt(ctx context.Context, id int64) (*domain.Receipt, error)
+	CreateReceipt(ctx context.Context, rec *domain.Receipt) (*domain.Receipt, error)
+	UpdateReceipt(ctx context.Context, id int64, fields map[string]any) error
+	DeleteReceipt(ctx context.Context, id int64) error
+	LinkReceiptToTransaction(ctx context.Context, receiptID, transactionID int64) error
 }

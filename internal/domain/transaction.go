@@ -19,12 +19,14 @@ type Transaction struct {
 
 	BalanceAfter *float64 `db:"balance_after" json:"balanceAfter,omitempty"`
 
-	CategoryID   *int64         `db:"category_id"   json:"categoryId,omitempty"`
-	CategorySlug *string        `db:"category_slug" json:"categorySlug,omitempty"`
-	CatStatus    string         `db:"cat_status"    json:"catStatus"`
-	Merchant     *string        `db:"merchant"      json:"merchant,omitempty"`
-	UserNotes    *string        `db:"user_notes"    json:"userNotes,omitempty"`
-	Suggestions  pq.StringArray `json:"suggestions" db:"suggestions" swaggertype:"array,string"`
+	CategoryID    *int64         `db:"category_id"   json:"categoryId,omitempty"`
+	CategorySlug  *string        `db:"category_slug" json:"categorySlug,omitempty"`
+	CategoryLabel *string        `db:"category_label" json:"categoryLabel,omitempty"`
+	CategoryColor *string        `db:"category_color" json:"categoryColor,omitempty"`
+	CatStatus     string         `db:"cat_status"    json:"catStatus"`
+	Merchant      *string        `db:"merchant"      json:"merchant,omitempty"`
+	UserNotes     *string        `db:"user_notes"    json:"userNotes,omitempty"`
+	Suggestions   pq.StringArray `json:"suggestions" db:"suggestions" swaggertype:"array,string"`
 
 	ReceiptID *int64 `db:"receipt_id" json:"receiptId,omitempty"`
 

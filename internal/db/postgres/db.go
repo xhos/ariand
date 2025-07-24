@@ -11,7 +11,14 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// DB holds the database connection and embeds all query types
+//go:embed schema.sql
+var schemaDDL string
+
+func ensureSchema(db *sqlx.DB) error {
+	_, err := db.Exec(schemaDDL)
+	return err
+}
+
 type DB struct {
 	*sqlx.DB
 	log *log.Logger
@@ -20,21 +27,9 @@ type DB struct {
 	*queries.Dashboard
 	*queries.Transactions
 	*queries.Categories
+	*queries.Receipts
 }
 
-//go:embed schema.sql
-var schemaDDL string
-
-// statically assert that *DB satisfies the db.Store interface
-// this will cause a compile-time error if the interface is not fully implemented
-var _ db.Store = (*DB)(nil)
-
-func ensureSchema(db *sqlx.DB) error {
-	_, err := db.Exec(string(schemaDDL))
-	return err
-}
-
-// New creates a new DB connection
 func New(dsn string) (*DB, error) {
 	if dsn == "" {
 		return nil, fmt.Errorf("empty DSN")
@@ -48,27 +43,23 @@ func New(dsn string) (*DB, error) {
 	if err := conn.Ping(); err != nil {
 		return nil, err
 	}
+
 	if err := ensureSchema(conn); err != nil {
 		return nil, err
 	}
 
-	return &DB{
-		DB:           conn,
-		log:          log.WithPrefix("db"),
-		Accounts:     queries.NewAccounts(conn),
-		Dashboard:    queries.NewDashboard(conn),
-		Transactions: queries.NewTransactions(conn),
-		Categories:   queries.NewCategories(conn),
-	}, nil
+	return initStore(conn), nil
 }
 
-// NewFromDB initializes a DB instance from an existing sqlx.DB connection.
-// It assumes the connection is alive and applies the schema.
 func NewFromDB(conn *sqlx.DB) (*DB, error) {
 	if err := ensureSchema(conn); err != nil {
-		return nil, fmt.Errorf("failed to ensure schema: %w", err)
+		return nil, err
 	}
 
+	return initStore(conn), nil
+}
+
+func initStore(conn *sqlx.DB) *DB {
 	return &DB{
 		DB:           conn,
 		log:          log.WithPrefix("db"),
@@ -76,7 +67,10 @@ func NewFromDB(conn *sqlx.DB) (*DB, error) {
 		Dashboard:    queries.NewDashboard(conn),
 		Transactions: queries.NewTransactions(conn),
 		Categories:   queries.NewCategories(conn),
-	}, nil
+		Receipts:     queries.NewReceipts(conn), // ← NEW
+	}
 }
 
 func (db *DB) Close() error { return db.DB.Close() }
+
+var _ db.Store = (*DB)(nil)

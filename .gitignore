@@ -1,4 +1,4 @@
-# Devenv
+# devenv
 .devenv*
 devenv.local.nix
 .direnv
@@ -6,4 +6,5 @@ devenv.local.nix
 
 .idea
 *.sh
+*.txt
 .env

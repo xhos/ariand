@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -19,11 +20,12 @@ func NewAccounts(db *sqlx.DB) *Accounts {
 }
 
 func (q *Accounts) CreateAccount(ctx context.Context, acc *domain.Account) (*domain.Account, error) {
-	query := `
-		INSERT INTO accounts (name, bank, account_type, anchor_date, anchor_balance, alias)
-		VALUES (:name, :bank, :account_type, :anchor_date, :anchor_balance, :alias)
-		RETURNING *
-	`
+	query := fmt.Sprintf(`
+        INSERT INTO accounts (name, bank, account_type, anchor_date, anchor_balance, alias)
+        VALUES (:name, :bank, :account_type, :anchor_date, :anchor_balance, :alias)
+        RETURNING %s
+    `, getAccountFields())
+
 	var createdAccount domain.Account
 	stmt, err := q.db.PrepareNamedContext(ctx, query)
 	if err != nil {
@@ -41,14 +43,16 @@ func (q *Accounts) CreateAccount(ctx context.Context, acc *domain.Account) (*dom
 
 func (q *Accounts) ListAccounts(ctx context.Context) ([]domain.Account, error) {
 	var accounts []domain.Account
-	err := q.db.SelectContext(ctx, &accounts, `SELECT * FROM accounts ORDER BY created_at`)
+	query := fmt.Sprintf("SELECT %s FROM accounts ORDER BY created_at", getAccountFields())
+	err := q.db.SelectContext(ctx, &accounts, query)
 	return accounts, err
 }
 
 func (q *Accounts) GetAccount(ctx context.Context, id int64) (*domain.Account, error) {
 	var account domain.Account
+	query := fmt.Sprintf("SELECT %s FROM accounts WHERE id=$1", getAccountFields())
 
-	err := q.db.GetContext(ctx, &account, `SELECT * FROM accounts WHERE id=$1`, id)
+	err := q.db.GetContext(ctx, &account, query, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, db.ErrNotFound
@@ -56,7 +60,31 @@ func (q *Accounts) GetAccount(ctx context.Context, id int64) (*domain.Account, e
 		return nil, err
 	}
 
-	return &account, err
+	return &account, nil
+}
+
+func (q *Accounts) UpdateAccount(ctx context.Context, id int64, fields map[string]any) error {
+	if len(fields) == 0 {
+		return nil
+	}
+
+	set, args, err := buildUpdateClauses(fields, allowedAccountCols)
+	if err != nil {
+		return err
+	}
+	args = append(args, id)
+
+	res, err := q.db.ExecContext(ctx,
+		fmt.Sprintf("UPDATE accounts SET %s WHERE id=$%d", set, len(args)),
+		args...,
+	)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return db.ErrNotFound
+	}
+	return nil
 }
 
 func (q *Accounts) DeleteAccount(ctx context.Context, id int64) error {

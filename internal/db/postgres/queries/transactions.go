@@ -13,20 +13,9 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type Transactions struct {
-	db *sqlx.DB
-}
+type Transactions struct{ db *sqlx.DB }
 
-func NewTransactions(db *sqlx.DB) *Transactions {
-	return &Transactions{db}
-}
-
-const transactionFields = `
-    t.id, t.email_id, t.account_id, t.tx_date, t.tx_amount, t.tx_currency,
-    t.tx_direction, t.tx_desc, t.balance_after, t.merchant, t.category_id,
-    t.cat_status, t.user_notes, t.foreign_currency, t.foreign_amount,
-    t.exchange_rate, t.suggestions, c.slug AS category_slug
-`
+func NewTransactions(db *sqlx.DB) *Transactions { return &Transactions{db} }
 
 // SyncAccountBalances recalculates the entire balance_after chain for a given account
 func (q *Transactions) SyncAccountBalances(ctx context.Context, tx *sqlx.Tx, accountID int64) error {
@@ -86,7 +75,7 @@ func (q *Transactions) ListTransactions(ctx context.Context, opts db.ListOpts) (
         SELECT %s
         FROM transactions t
         LEFT JOIN categories c ON t.category_id = c.id
-    `, transactionFields)
+    `, getTransactionFields())
 
 	if opts.CursorDate != nil && opts.CursorID != nil {
 		conditions = append(conditions, fmt.Sprintf("(t.tx_date, t.id) < ($%d, $%d)", len(args)+1, len(args)+2))
@@ -168,7 +157,7 @@ func (q *Transactions) GetTransaction(ctx context.Context, id int64) (*domain.Tr
         FROM transactions t
         LEFT JOIN categories c ON t.category_id = c.id
         WHERE t.id=$1
-    `, transactionFields)
+    `, getTransactionFields())
 
 	err := q.db.GetContext(ctx, &transaction, query, id)
 	if err != nil {
@@ -250,22 +239,6 @@ func (q *Transactions) UpdateTransaction(ctx context.Context, id int64, fields m
 		return nil
 	}
 
-	allowedCols := map[string]bool{
-		"tx_date":          true,
-		"tx_amount":        true,
-		"tx_currency":      true,
-		"tx_direction":     true,
-		"tx_desc":          true,
-		"category_id":      true,
-		"merchant":         true,
-		"user_notes":       true,
-		"foreign_currency": true,
-		"foreign_amount":   true,
-		"exchange_rate":    true,
-		"cat_status":       true,
-		"suggestions":      true,
-	}
-
 	var accountID int64
 	tx, err := q.db.Beginx()
 	if err != nil {
@@ -281,7 +254,7 @@ func (q *Transactions) UpdateTransaction(ctx context.Context, id int64, fields m
 		return err
 	}
 
-	setClauses, args, err := buildUpdateClauses(fields, allowedCols)
+	setClauses, args, err := buildUpdateClauses(fields, allowedTransactionCols)
 	if err != nil {
 		return err
 	}
@@ -297,7 +270,7 @@ func (q *Transactions) UpdateTransaction(ctx context.Context, id int64, fields m
 		return db.ErrNotFound
 	}
 
-	// Only resync balances if a financial field was changed
+	// only resync balances if a financial field was changed
 	if fields["tx_amount"] != nil || fields["tx_direction"] != nil {
 		if err := q.SyncAccountBalances(ctx, tx, accountID); err != nil {
 			return fmt.Errorf("failed to sync balances: %w", err)
@@ -336,26 +309,4 @@ func (q *Transactions) DeleteTransaction(ctx context.Context, id int64) error {
 	}
 
 	return tx.Commit()
-}
-
-func buildUpdateClauses(fields map[string]any, allowedCols map[string]bool) (string, []any, error) {
-	var setClauses []string
-	var args []any
-
-	i := 1
-
-	for k, v := range fields {
-		if !allowedCols[k] {
-			continue
-		}
-		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", k, i))
-		args = append(args, v)
-		i++
-	}
-
-	if len(setClauses) == 0 {
-		return "", nil, errors.New("no valid fields provided for update")
-	}
-
-	return strings.Join(setClauses, ", "), args, nil
 }
