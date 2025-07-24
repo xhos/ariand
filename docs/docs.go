@@ -1207,8 +1207,14 @@ const docTemplate = `{
                 "catStatus": {
                     "type": "string"
                 },
+                "categoryColor": {
+                    "type": "string"
+                },
                 "categoryId": {
                     "type": "integer"
+                },
+                "categoryLabel": {
+                    "type": "string"
                 },
                 "categorySlug": {
                     "type": "string"
