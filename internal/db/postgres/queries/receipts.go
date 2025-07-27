@@ -149,33 +149,3 @@ func (q *Receipts) DeleteReceipt(ctx context.Context, id int64) error {
 	}
 	return nil
 }
-
-// ---------------------------------------------------------------------------
-// Link ↔ Transaction
-// ---------------------------------------------------------------------------
-
-func (q *Receipts) LinkReceiptToTransaction(ctx context.Context, receiptID, transactionID int64) error {
-	tx, err := q.db.BeginTxx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	if _, err := tx.ExecContext(
-		ctx,
-		"UPDATE receipts SET transaction_id=$1 WHERE id=$2",
-		transactionID, receiptID,
-	); err != nil {
-		return err
-	}
-
-	if _, err := tx.ExecContext(
-		ctx,
-		"UPDATE transactions SET receipt_id=$1 WHERE id=$2",
-		receiptID, transactionID,
-	); err != nil {
-		return err
-	}
-
-	return tx.Commit()
-}

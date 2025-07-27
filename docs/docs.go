@@ -655,14 +655,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/receipts/parse": {
+        "/api/receipts/match": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Uploads a receipt image (JPEG or PNG) and returns the parsed, structured data.",
+                "description": "Parses a receipt image and searches for the best transaction match based on date, amount, and merchant. Creates a receipt record with the match details.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -672,31 +672,47 @@ const docTemplate = `{
                 "tags": [
                     "receipts"
                 ],
-                "summary": "Parse a receipt image",
+                "summary": "Upload a receipt to find a matching transaction (Smart Match)",
                 "parameters": [
                     {
                         "type": "file",
-                        "description": "Receipt image file",
+                        "description": "Receipt image file (e.g., JPEG, PNG)",
                         "name": "file",
                         "in": "formData",
                         "required": true
+                    },
+                    {
+                        "enum": [
+                            "gemini",
+                            "local"
+                        ],
+                        "type": "string",
+                        "description": "Parsing provider to use",
+                        "name": "provider",
+                        "in": "query"
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "201": {
+                        "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/service.Receipt"
+                            "$ref": "#/definitions/domain.Receipt"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Missing or invalid file",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "File is too large",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error or parser service failure",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
                         }
@@ -1120,6 +1136,90 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/transactions/{id}/receipt": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Parses a receipt image, stores its data, and forcibly links it to an existing transaction.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Upload a receipt for a transaction (Manual Link)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Transaction ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Receipt image file (e.g., JPEG, PNG)",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "gemini",
+                            "local"
+                        ],
+                        "type": "string",
+                        "description": "Parsing provider to use",
+                        "name": "provider",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Receipt"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid transaction ID or missing/invalid file",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Transaction not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Transaction already has a receipt",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "File is too large",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error or parser service failure",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1194,6 +1294,152 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "domain.Receipt": {
+            "type": "object",
+            "properties": {
+                "canonicalData": {
+                    "type": "object"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.ReceiptItem"
+                    }
+                },
+                "lat": {
+                    "type": "number"
+                },
+                "linkStatus": {
+                    "$ref": "#/definitions/domain.ReceiptLinkStatus"
+                },
+                "locationLabel": {
+                    "type": "string"
+                },
+                "locationSource": {
+                    "type": "string"
+                },
+                "lon": {
+                    "type": "number"
+                },
+                "matchSuggestions": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "merchant": {
+                    "type": "string"
+                },
+                "parseStatus": {
+                    "$ref": "#/definitions/domain.ReceiptParseStatus"
+                },
+                "provider": {
+                    "$ref": "#/definitions/domain.ReceiptProvider"
+                },
+                "purchaseDate": {
+                    "type": "string"
+                },
+                "rawPayload": {
+                    "type": "object"
+                },
+                "taxAmount": {
+                    "type": "number"
+                },
+                "totalAmount": {
+                    "type": "number"
+                },
+                "transactionId": {
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.ReceiptItem": {
+            "type": "object",
+            "properties": {
+                "categoryHint": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lineNo": {
+                    "type": "integer"
+                },
+                "lineTotal": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "qty": {
+                    "type": "number"
+                },
+                "sku": {
+                    "type": "string"
+                },
+                "unitPrice": {
+                    "type": "number"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.ReceiptLinkStatus": {
+            "type": "string",
+            "enum": [
+                "unlinked",
+                "matched",
+                "needs_verification"
+            ],
+            "x-enum-varnames": [
+                "LinkStatusUnlinked",
+                "LinkStatusMatched",
+                "LinkStatusNeedsVerification"
+            ]
+        },
+        "domain.ReceiptParseStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "parsed",
+                "failed"
+            ],
+            "x-enum-varnames": [
+                "StatusPending",
+                "StatusParsed",
+                "StatusFailed"
+            ]
+        },
+        "domain.ReceiptProvider": {
+            "type": "string",
+            "enum": [
+                "gemini",
+                "local"
+            ],
+            "x-enum-varnames": [
+                "ProviderGemini",
+                "ProviderLocal"
+            ]
         },
         "domain.Transaction": {
             "type": "object",
@@ -1418,37 +1664,6 @@ const docTemplate = `{
         "handlers.UpdateTransactionRequest": {
             "type": "object",
             "additionalProperties": {}
-        },
-        "service.Receipt": {
-            "type": "object",
-            "properties": {
-                "date": {
-                    "type": "string"
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "price": {
-                                "type": "number"
-                            },
-                            "qty": {
-                                "type": "integer"
-                            }
-                        }
-                    }
-                },
-                "merchant": {
-                    "type": "string"
-                },
-                "total": {
-                    "type": "number"
-                }
-            }
         }
     },
     "securityDefinitions": {

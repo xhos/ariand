@@ -37,3 +37,8 @@ type Transaction struct {
 	CreatedAt time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
 }
+
+type TransactionWithScore struct {
+	Transaction
+	MerchantScore float64 `db:"merchant_score" json:"merchantScore"`
+}

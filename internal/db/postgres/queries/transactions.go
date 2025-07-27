@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jmoiron/sqlx"
@@ -309,4 +310,65 @@ func (q *Transactions) DeleteTransaction(ctx context.Context, id int64) error {
 	}
 
 	return tx.Commit()
+}
+
+// SetTransactionReceipt atomically links a receipt to a transaction.
+// It locks the transaction row to prevent race conditions. If the transaction
+// already has a receipt, it returns a conflict error.
+func (q *Transactions) SetTransactionReceipt(ctx context.Context, transactionID int64, receiptID int64) error {
+	tx, err := q.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback() // Rollback is ignored if Commit() is called
+
+	// Step 1: Lock the transaction row and check if it already has a receipt
+	var existingReceiptID sql.NullInt64
+	err = tx.GetContext(ctx, &existingReceiptID, `SELECT receipt_id FROM transactions WHERE id = $1 FOR UPDATE`, transactionID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return db.ErrNotFound // Transaction doesn't exist
+		}
+		return fmt.Errorf("failed to lock transaction row: %w", err)
+	}
+
+	if existingReceiptID.Valid {
+		return db.ErrConflict // Transaction already has a receipt
+	}
+
+	// Step 2: Update the transaction to link the new receipt
+	_, err = tx.ExecContext(ctx, `UPDATE transactions SET receipt_id = $1 WHERE id = $2`, receiptID, transactionID)
+	if err != nil {
+		return fmt.Errorf("failed to update transaction with receipt_id: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+// FindCandidateTransactions performs a "wide net" search for transactions that could match a receipt.
+func (q *Transactions) FindCandidateTransactions(ctx context.Context, merchant string, date time.Time, total float64) ([]*domain.TransactionWithScore, error) {
+	query := fmt.Sprintf(`
+		SELECT
+			%s,
+			similarity(t.tx_desc, $1) AS merchant_score
+		FROM transactions t
+        LEFT JOIN categories c ON t.category_id = c.id
+		WHERE
+			t.receipt_id IS NULL
+			AND t.tx_direction = 'out'
+			AND t.tx_date >= $2::date - '60 days'::interval -- WIDENED DATE WINDOW
+			AND t.tx_amount BETWEEN $3 AND ($3 * 1.20)
+			AND similarity(t.tx_desc, $1) > 0.3
+		ORDER BY
+			merchant_score DESC
+		LIMIT 10; -- INCREASED LIMIT
+	`, getTransactionFields())
+
+	var candidates []*domain.TransactionWithScore
+	err := q.db.SelectContext(ctx, &candidates, query, merchant, date, total)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query for candidate transactions: %w", err)
+	}
+
+	return candidates, nil
 }

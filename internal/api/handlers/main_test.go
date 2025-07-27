@@ -1,8 +1,8 @@
-// internal/api/handlers/main_test.go
 package handlers
 
 import (
 	"ariand/internal/api/middleware"
+	"ariand/internal/config"
 	"ariand/internal/db/postgres"
 	"ariand/internal/service"
 	"bytes"
@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/jackc/pgx/v5"
@@ -144,16 +145,22 @@ func newTestApp(t *testing.T) (*testApp, func()) {
 		LogLevel: tracelog.LogLevelTrace,
 	}
 
-	config, err := pgx.ParseConfig(testDSN)
+	pgxConfig, err := pgx.ParseConfig(testDSN)
 	require.NoError(t, err, "failed to parse DSN")
-	config.Tracer = tracer
+	pgxConfig.Tracer = tracer
 
-	dbConn := stdlib.OpenDB(*config)
+	dbConn := stdlib.OpenDB(*pgxConfig)
 	sqlxDB := sqlx.NewDb(dbConn, "pgx")
 	store, err := postgres.NewFromDB(sqlxDB)
 	require.NoError(t, err, "failed to create store from DB")
 
-	router := SetupRoutes(service.New(store, testLogger))
+	testCfg := &config.Config{
+		ReceiptParserURL:     "http://localhost:9999",
+		ReceiptParserTimeout: 5 * time.Second,
+	}
+
+	services := service.New(store, testLogger, testCfg)
+	router := SetupRoutes(services)
 
 	const testAPIKey = "test-api-key"
 	stack := middleware.CreateStack(

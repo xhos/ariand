@@ -21,6 +21,11 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'receipt_parse_status') THEN
     CREATE TYPE receipt_parse_status AS ENUM ('pending','parsed','failed');
   END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'receipt_link_status') THEN
+    CREATE TYPE receipt_link_status AS ENUM ('unlinked','matched','needs_verification');
+  END IF;
+
 END$$;
 
 DO $$
@@ -149,6 +154,9 @@ CREATE TABLE IF NOT EXISTS receipts (
   provider         receipt_provider     NOT NULL,
   parse_status     receipt_parse_status NOT NULL DEFAULT 'pending',
 
+  link_status       receipt_link_status NOT NULL DEFAULT 'unlinked',
+  match_suggestions INT[],
+  
   merchant         TEXT,
   purchase_date    DATE,
   total_amount     NUMERIC(18,2),

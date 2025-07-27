@@ -3,13 +3,16 @@ package config
 import (
 	"flag"
 	"os"
+	"time"
 )
 
 type Config struct {
-	Port        string
-	APIKey      string
-	LogLevel    string
-	DatabaseURL string
+	Port                 string
+	APIKey               string
+	LogLevel             string
+	DatabaseURL          string
+	ReceiptParserURL     string
+	ReceiptParserTimeout time.Duration
 }
 
 func Load() Config {
@@ -22,15 +25,32 @@ func Load() Config {
 		panic("API_KEY environment variable is required")
 	}
 
-	dbConn := os.Getenv("DB_STRING")
-	if dbConn == "" {
+	databaseUrl := os.Getenv("DB_STRING")
+	if databaseUrl == "" {
 		panic("DB_STRING environment variable is required")
 	}
 
+	receiptParserURL := os.Getenv("RECEIPT_PARSER_URL")
+	if receiptParserURL == "" {
+		receiptParserURL = "http://localhost:8081"
+	}
+
+	timeoutStr := "30s"
+	if envTimeout := os.Getenv("RECEIPT_PARSER_TIMEOUT"); envTimeout != "" {
+		timeoutStr = envTimeout
+	}
+
+	receiptParserTimeout, err := time.ParseDuration(timeoutStr)
+	if err != nil {
+		panic("invalid timeout value, must be a valid duration")
+	}
+
 	return Config{
-		Port:        ":" + *port,
-		APIKey:      apiKey,
-		LogLevel:    *logLevel,
-		DatabaseURL: dbConn,
+		Port:                 ":" + *port,
+		APIKey:               apiKey,
+		LogLevel:             *logLevel,
+		DatabaseURL:          databaseUrl,
+		ReceiptParserURL:     receiptParserURL,
+		ReceiptParserTimeout: receiptParserTimeout,
 	}
 }

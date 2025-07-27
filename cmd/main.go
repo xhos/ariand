@@ -50,7 +50,7 @@ func main() {
 	logger.Info("database connection established")
 
 	// --- http server ---
-	router := handlers.SetupRoutes(service.New(store, logger))
+	router := handlers.SetupRoutes(service.New(store, logger, &cfg))
 
 	stack := middleware.CreateStack(
 		middleware.RequestID(),

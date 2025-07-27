@@ -22,6 +22,11 @@ func SetupRoutes(services *service.Services) *http.ServeMux {
 	mux.HandleFunc("POST /api/transactions/{id}/categorize", HandleUpdate(txnH.Categorize))
 	mux.HandleFunc("POST /api/transactions/{id}/identify-merchant", HandleUpdate(txnH.IdentifyMerchant))
 
+	// receipts
+	receiptH := &ReceiptHandler{service: services.Receipts}
+	mux.HandleFunc("POST /api/transactions/{id}/receipt", HandleCreate(receiptH.Upload))
+	mux.HandleFunc("POST /api/receipts/match", HandleCreate(receiptH.Match))
+
 	// categories
 	catH := &CategoryHandler{service: services.Categories}
 	mux.HandleFunc("GET /api/categories", HandleGet(catH.List))

@@ -50,6 +50,106 @@ definitions:
       updatedAt:
         type: string
     type: object
+  domain.Receipt:
+    properties:
+      canonicalData:
+        type: object
+      createdAt:
+        type: string
+      currency:
+        type: string
+      id:
+        type: integer
+      imageUrl:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/domain.ReceiptItem'
+        type: array
+      lat:
+        type: number
+      linkStatus:
+        $ref: '#/definitions/domain.ReceiptLinkStatus'
+      locationLabel:
+        type: string
+      locationSource:
+        type: string
+      lon:
+        type: number
+      matchSuggestions:
+        items:
+          type: integer
+        type: array
+      merchant:
+        type: string
+      parseStatus:
+        $ref: '#/definitions/domain.ReceiptParseStatus'
+      provider:
+        $ref: '#/definitions/domain.ReceiptProvider'
+      purchaseDate:
+        type: string
+      rawPayload:
+        type: object
+      taxAmount:
+        type: number
+      totalAmount:
+        type: number
+      transactionId:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  domain.ReceiptItem:
+    properties:
+      categoryHint:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: integer
+      lineNo:
+        type: integer
+      lineTotal:
+        type: number
+      name:
+        type: string
+      qty:
+        type: number
+      sku:
+        type: string
+      unitPrice:
+        type: number
+      updatedAt:
+        type: string
+    type: object
+  domain.ReceiptLinkStatus:
+    enum:
+    - unlinked
+    - matched
+    - needs_verification
+    type: string
+    x-enum-varnames:
+    - LinkStatusUnlinked
+    - LinkStatusMatched
+    - LinkStatusNeedsVerification
+  domain.ReceiptParseStatus:
+    enum:
+    - pending
+    - parsed
+    - failed
+    type: string
+    x-enum-varnames:
+    - StatusPending
+    - StatusParsed
+    - StatusFailed
+  domain.ReceiptProvider:
+    enum:
+    - gemini
+    - local
+    type: string
+    x-enum-varnames:
+    - ProviderGemini
+    - ProviderLocal
   domain.Transaction:
     properties:
       accountId:
@@ -200,26 +300,6 @@ definitions:
     type: object
   handlers.UpdateTransactionRequest:
     additionalProperties: {}
-    type: object
-  service.Receipt:
-    properties:
-      date:
-        type: string
-      items:
-        items:
-          properties:
-            name:
-              type: string
-            price:
-              type: number
-            qty:
-              type: integer
-          type: object
-        type: array
-      merchant:
-        type: string
-      total:
-        type: number
     type: object
 info:
   contact: {}
@@ -636,36 +716,48 @@ paths:
       summary: Get income & expense trends
       tags:
       - dashboard
-  /api/receipts/parse:
+  /api/receipts/match:
     post:
       consumes:
       - multipart/form-data
-      description: Uploads a receipt image (JPEG or PNG) and returns the parsed, structured
-        data.
+      description: Parses a receipt image and searches for the best transaction match
+        based on date, amount, and merchant. Creates a receipt record with the match
+        details.
       parameters:
-      - description: Receipt image file
+      - description: Receipt image file (e.g., JPEG, PNG)
         in: formData
         name: file
         required: true
         type: file
+      - description: Parsing provider to use
+        enum:
+        - gemini
+        - local
+        in: query
+        name: provider
+        type: string
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           schema:
-            $ref: '#/definitions/service.Receipt'
+            $ref: '#/definitions/domain.Receipt'
         "400":
-          description: Bad Request
+          description: Missing or invalid file
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "413":
+          description: File is too large
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error or parser service failure
           schema:
             $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Parse a receipt image
+      summary: Upload a receipt to find a matching transaction (Smart Match)
       tags:
       - receipts
   /api/transactions:
@@ -935,6 +1027,62 @@ paths:
       security:
       - BearerAuth: []
       summary: identify merchant for a transaction
+      tags:
+      - transactions
+  /api/transactions/{id}/receipt:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Parses a receipt image, stores its data, and forcibly links it
+        to an existing transaction.
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Receipt image file (e.g., JPEG, PNG)
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Parsing provider to use
+        enum:
+        - gemini
+        - local
+        in: query
+        name: provider
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Receipt'
+        "400":
+          description: Invalid transaction ID or missing/invalid file
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Transaction not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: Transaction already has a receipt
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "413":
+          description: File is too large
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal server error or parser service failure
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload a receipt for a transaction (Manual Link)
       tags:
       - transactions
 securityDefinitions:

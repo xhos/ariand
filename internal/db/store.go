@@ -42,6 +42,8 @@ type Store interface {
 	CreateTransaction(ctx context.Context, t *domain.Transaction) (int64, error)
 	UpdateTransaction(ctx context.Context, id int64, fields map[string]any) error
 	DeleteTransaction(ctx context.Context, id int64) error
+	SetTransactionReceipt(ctx context.Context, transactionID int64, receiptID int64) error
+	FindCandidateTransactions(ctx context.Context, merchant string, date time.Time, total float64) ([]*domain.TransactionWithScore, error)
 
 	// dashboard methods
 	GetDashboardBalance(ctx context.Context) (float64, error)
@@ -71,5 +73,4 @@ type Store interface {
 	CreateReceipt(ctx context.Context, rec *domain.Receipt) (*domain.Receipt, error)
 	UpdateReceipt(ctx context.Context, id int64, fields map[string]any) error
 	DeleteReceipt(ctx context.Context, id int64) error
-	LinkReceiptToTransaction(ctx context.Context, receiptID, transactionID int64) error
 }
