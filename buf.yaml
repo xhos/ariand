@@ -1,0 +1,21 @@
+version: v2
+
+deps:
+  - buf.build/googleapis/googleapis
+
+modules:
+  - path: proto
+    name: buf.build/xhos/ariand
+
+lint:
+  use:
+    - STANDARD
+  ignore_only:
+    RPC_RESPONSE_STANDARD_NAME:
+      - proto/ariand/v1/services.proto
+    RPC_REQUEST_RESPONSE_UNIQUE:
+      - proto/ariand/v1/services.proto
+
+breaking:
+  use:
+    - FILE

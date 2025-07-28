@@ -2,6 +2,7 @@
   packages = with pkgs; [
     go-swag
     protobuf
+    buf
   ];
 
   languages.go.enable = true;

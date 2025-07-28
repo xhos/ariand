@@ -1,12 +1,16 @@
 syntax = "proto3";
 
-package arian.d.v1;
+package ariand.v1;
 
 import "google/protobuf/timestamp.proto";
+import "google/type/date.proto";
+import "google/type/money.proto";
 
 option go_package = "ariand/gen/go/ariand/v1;ariandv1";
 
-// --- Enums ---
+// ------------------------------------------------------
+// Enums
+// ------------------------------------------------------
 
 enum AccountType {
   ACCOUNT_TYPE_UNSPECIFIED = 0;
@@ -17,16 +21,30 @@ enum AccountType {
   ACCOUNT_TYPE_OTHER = 5;
 }
 
-enum ReceiptProvider {
-  RECEIPT_PROVIDER_UNSPECIFIED = 0;
-  RECEIPT_PROVIDER_GEMINI = 1;
-  RECEIPT_PROVIDER_LOCAL = 2;
+enum TransactionDirection {
+  TRANSACTION_DIRECTION_UNSPECIFIED = 0;
+  TRANSACTION_DIRECTION_INCOMING = 1;
+  TRANSACTION_DIRECTION_OUTGOING = 2;
+}
+
+enum CategorizationStatus {
+  CATEGORIZATION_STATUS_UNSPECIFIED = 0;
+  CATEGORIZATION_STATUS_NONE = 1;
+  CATEGORIZATION_STATUS_AUTO = 2;
+  CATEGORIZATION_STATUS_MANUAL = 3;
+  CATEGORIZATION_STATUS_VERIFIED = 4;
+}
+
+enum ReceiptEngine {
+  RECEIPT_ENGINE_UNSPECIFIED = 0;
+  RECEIPT_ENGINE_GEMINI = 1;
+  RECEIPT_ENGINE_LOCAL = 2;
 }
 
 enum ReceiptParseStatus {
   RECEIPT_PARSE_STATUS_UNSPECIFIED = 0;
   RECEIPT_PARSE_STATUS_PENDING = 1;
-  RECEIPT_PARSE_STATUS_PARSED = 2;
+  RECEIPT_PARSE_STATUS_SUCCESS = 2;
   RECEIPT_PARSE_STATUS_FAILED = 3;
 }
 
@@ -37,53 +55,83 @@ enum ReceiptLinkStatus {
   RECEIPT_LINK_STATUS_NEEDS_VERIFICATION = 3;
 }
 
-// --- Messages ---
+// ------------------------------------------------------
+// Reusable Messages
+// ------------------------------------------------------
+
+message Location {
+  double latitude = 1; // WGS84 decimal degrees
+  double longitude = 2; // WGS84 decimal degrees
+  string source = 3; // e.g. "gps", "ip", "manual"
+}
+
+message Cursor {
+  // Keyset pagination: either/both may be supplied/returned.
+  google.protobuf.Timestamp date = 1;
+  optional int64 id = 2;
+}
+
+// ------------------------------------------------------
+// Core Domain Messages
+// ------------------------------------------------------
 
 message Account {
   int64 id = 1;
   string name = 2;
   string bank = 3;
   AccountType type = 4;
-  optional string alias = 5;
+  google.type.Money anchor_balance = 5;
   google.protobuf.Timestamp anchor_date = 6;
-  double anchor_balance = 7;
-  google.protobuf.Timestamp created_at = 8;
-  google.protobuf.Timestamp updated_at = 9;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  optional string alias = 9;
 }
 
 message Category {
   int64 id = 1;
-  string slug = 2;
-  string label = 3;
-  string color = 4;
+  string slug = 2; // e.g. "food.groceries"
+  string label = 3; // e.g. "Groceries"
+  string color = 4; // hex code, e.g. "#FF0000"
   google.protobuf.Timestamp created_at = 5;
   google.protobuf.Timestamp updated_at = 6;
 }
 
 message Transaction {
   int64 id = 1;
-  optional string email_id = 2;
-  int64 account_id = 3;
-  google.protobuf.Timestamp tx_date = 4;
-  double tx_amount = 5;
-  string tx_currency = 6;
-  string tx_direction = 7;
-  optional string tx_desc = 8;
-  optional double balance_after = 9;
-  optional int64 category_id = 10;
-  optional string category_slug = 11;
-  optional string category_label = 12;
-  optional string category_color = 13;
-  string cat_status = 14;
-  optional string merchant = 15;
-  optional string user_notes = 16;
-  repeated string suggestions = 17;
-  optional int64 receipt_id = 18;
-  optional double foreign_amount = 19;
-  optional string foreign_currency = 20;
-  optional double exchange_rate = 21;
-  google.protobuf.Timestamp created_at = 22;
-  google.protobuf.Timestamp updated_at = 23;
+  google.protobuf.Timestamp tx_date = 2;
+  google.type.Money tx_amount = 3; // contains currency
+  TransactionDirection direction = 4;
+  int64 account_id = 5;
+
+  // Optional metadata
+  optional string email_id = 6;
+  optional string description = 7;
+  optional Location location = 8;
+
+  // Categorization
+  optional int64 category_id = 9;
+  optional string category_slug = 10;
+  CategorizationStatus cat_status = 11;
+
+  // Merchant & notes
+  optional string merchant = 12;
+  optional string user_notes = 13;
+
+  // Balance after this TX (server-computed)
+  google.type.Money balance_after = 14;
+
+  // AI suggestions
+  repeated string suggestions = 15;
+
+  // Receipt linkage
+  optional int64 receipt_id = 16;
+
+  // FX details (if present)
+  optional google.type.Money foreign_amount = 17;
+  optional double exchange_rate = 18;
+
+  google.protobuf.Timestamp created_at = 19;
+  google.protobuf.Timestamp updated_at = 20;
 }
 
 message TransactionWithScore {
@@ -94,11 +142,11 @@ message TransactionWithScore {
 message ReceiptItem {
   int64 id = 1;
   int64 receipt_id = 2;
-  optional int32 line_no = 3;
+  int32 line_no = 3;
   string name = 4;
-  optional double qty = 5;
-  optional double unit_price = 6;
-  optional double line_total = 7;
+  double quantity = 5;
+  google.type.Money unit_price = 6;
+  google.type.Money line_total = 7;
   optional string sku = 8;
   optional string category_hint = 9;
   google.protobuf.Timestamp created_at = 10;
@@ -108,36 +156,30 @@ message ReceiptItem {
 message Receipt {
   int64 id = 1;
   optional int64 transaction_id = 2;
-  ReceiptProvider provider = 3;
+  ReceiptEngine engine = 3;
   ReceiptParseStatus parse_status = 4;
   ReceiptLinkStatus link_status = 5;
-  repeated int64 match_suggestions = 6;
+  repeated int64 match_ids = 6;
+
+  // Extracted/normalized fields (optional)
   optional string merchant = 7;
-  optional google.protobuf.Timestamp purchase_date = 8;
-  optional double total_amount = 9;
-  optional string currency = 10;
-  optional double tax_amount = 11;
+  optional google.type.Date purchase_date = 8;
+  optional google.type.Money total_amount = 9;
+  optional google.type.Money tax_amount = 10;
+
+  // Metadata & payloads
+  optional Location location = 11;
   optional string raw_payload = 12;
   optional string canonical_data = 13;
-  optional string image_url = 14;
-  // 15 intentionally unused to preserve numbering history.
-  optional double lat = 16;
-  optional double lon = 17;
-  optional string location_source = 18;
-  optional string location_label = 19;
-  google.protobuf.Timestamp created_at = 20;
-  google.protobuf.Timestamp updated_at = 21;
-  repeated ReceiptItem items = 22;
+
+  // Timestamps & items
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+  repeated ReceiptItem items = 16;
 }
 
 message TrendPoint {
-  // YYYY-MM-DD
-  string date = 1;
-  double income = 2;
-  double expenses = 3;
-}
-
-message Cursor {
-  optional google.protobuf.Timestamp date = 1;
-  optional int64 id = 2;
+  google.type.Date date = 1; // YYYY-MM-DD
+  google.type.Money income = 2;
+  google.type.Money expenses = 3;
 }

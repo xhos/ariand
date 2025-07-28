@@ -1,14 +1,17 @@
 syntax = "proto3";
 
-package arian.d.v1;
+package ariand.v1;
 
 import "ariand/v1/core.proto";
 import "google/protobuf/field_mask.proto";
 import "google/protobuf/timestamp.proto";
+import "google/type/money.proto";
 
 option go_package = "ariand/gen/go/ariand/v1;ariandv1";
 
-// --- Transaction Service ---
+// ------------------------------------------------------
+// Transaction Service
+// ------------------------------------------------------
 
 service TransactionService {
   rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse);
@@ -27,7 +30,7 @@ message ListTransactionsRequest {
   optional google.protobuf.Timestamp end_date = 4;
   repeated int64 account_ids = 5;
   repeated string categories = 6;
-  optional string direction = 7;
+  optional TransactionDirection direction = 7;
   optional string merchant_search = 8;
   optional string description_search = 9;
   optional double amount_min = 10;
@@ -40,26 +43,28 @@ message ListTransactionsResponse {
   optional Cursor next_cursor = 2;
 }
 
-message GetTransactionRequest { int64 id = 1; }
-
-message CreateTransactionRequest {
-  optional string email_id = 1;
-  int64 account_id = 2;
-  google.protobuf.Timestamp tx_date = 3;
-  double tx_amount = 4;
-  string tx_currency = 5;
-  string tx_direction = 6;
-  optional string tx_desc = 7;
-  optional int64 category_id = 8;
-  optional string merchant = 9;
-  optional string user_notes = 10;
-  repeated string suggestions = 11;
-  optional double foreign_amount = 12;
-  optional string foreign_currency = 13;
-  optional double exchange_rate = 14;
+message GetTransactionRequest {
+  int64 id = 1;
 }
 
-message CreateTransactionResponse { int64 id = 1; }
+message CreateTransactionRequest {
+  int64 account_id = 1;
+  google.protobuf.Timestamp tx_date = 2;
+  google.type.Money tx_amount = 3;
+  TransactionDirection tx_direction = 4;
+  optional string email_id = 5;
+  optional string tx_desc = 6;
+  optional int64 category_id = 7;
+  optional string merchant = 8;
+  optional string user_notes = 9;
+  repeated string suggestions = 10;
+  optional google.type.Money foreign_amount = 11;
+  optional double exchange_rate = 12;
+}
+
+message CreateTransactionResponse {
+  int64 id = 1;
+}
 
 message UpdateTransactionRequest {
   int64 id = 1;
@@ -67,16 +72,27 @@ message UpdateTransactionRequest {
   google.protobuf.FieldMask update_mask = 3;
 }
 
-message DeleteTransactionRequest { int64 id = 1; }
+message DeleteTransactionRequest {
+  int64 id = 1;
+}
+
 message DeleteTransactionResponse {}
 
-message CategorizeTransactionRequest { int64 id = 1; }
+message CategorizeTransactionRequest {
+  int64 id = 1;
+}
+
 message CategorizeTransactionResponse {}
 
-message IdentifyMerchantRequest { int64 id = 1; }
+message IdentifyMerchantRequest {
+  int64 id = 1;
+}
+
 message IdentifyMerchantResponse {}
 
-// --- Account Service ---
+// ------------------------------------------------------
+// Account Service
+// ------------------------------------------------------
 
 service AccountService {
   rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse);
@@ -85,36 +101,52 @@ service AccountService {
   rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
   rpc SetAnchor(SetAnchorRequest) returns (SetAnchorResponse);
 
-  // RENAMED to avoid collision with DashboardService.GetBalance
-  rpc GetAccountBalance(GetBalanceRequest) returns (GetBalanceResponse);
+  // Avoids name collision with DashboardService.GetBalance
+  rpc GetAccountBalance(GetAccountBalanceRequest) returns (GetAccountBalanceResponse);
 }
 
 message ListAccountsRequest {}
-message ListAccountsResponse { repeated Account accounts = 1; }
 
-message GetAccountRequest { int64 id = 1; }
+message ListAccountsResponse {
+  repeated Account accounts = 1;
+}
+
+message GetAccountRequest {
+  int64 id = 1;
+}
 
 message CreateAccountRequest {
   string name = 1;
   string bank = 2;
   AccountType type = 3;
   optional string alias = 4;
-  double anchor_balance = 5;
+  google.type.Money anchor_balance = 5;
 }
 
-message DeleteAccountRequest { int64 id = 1; }
+message DeleteAccountRequest {
+  int64 id = 1;
+}
+
 message DeleteAccountResponse {}
 
 message SetAnchorRequest {
   int64 id = 1;
-  double balance = 2;
+  google.type.Money balance = 2;
 }
+
 message SetAnchorResponse {}
 
-message GetBalanceRequest { int64 id = 1; }
-message GetBalanceResponse { double balance = 1; }
+message GetAccountBalanceRequest {
+  int64 id = 1;
+}
 
-// --- Category Service ---
+message GetAccountBalanceResponse {
+  google.type.Money balance = 1;
+}
+
+// ------------------------------------------------------
+// Category Service
+// ------------------------------------------------------
 
 service CategoryService {
   rpc ListCategories(ListCategoriesRequest) returns (ListCategoriesResponse);
@@ -125,9 +157,14 @@ service CategoryService {
 }
 
 message ListCategoriesRequest {}
-message ListCategoriesResponse { repeated Category categories = 1; }
 
-message GetCategoryRequest { int64 id = 1; }
+message ListCategoriesResponse {
+  repeated Category categories = 1;
+}
+
+message GetCategoryRequest {
+  int64 id = 1;
+}
 
 message CreateCategoryRequest {
   string slug = 1;
@@ -135,7 +172,9 @@ message CreateCategoryRequest {
   optional string color = 3;
 }
 
-message CreateCategoryResponse { int64 id = 1; }
+message CreateCategoryResponse {
+  int64 id = 1;
+}
 
 message UpdateCategoryRequest {
   int64 id = 1;
@@ -143,35 +182,50 @@ message UpdateCategoryRequest {
   google.protobuf.FieldMask update_mask = 3;
 }
 
-message DeleteCategoryRequest { int64 id = 1; }
-message DeleteCategoryResponse {}
-
-// --- Dashboard Service ---
-
-service DashboardService {
-  rpc GetBalance(DashboardBalanceRequest) returns (DashboardBalanceResponse);
-  rpc GetDebt(DashboardDebtRequest) returns (DashboardDebtResponse);
-  rpc GetTrends(DashboardTrendsRequest) returns (DashboardTrendsResponse);
+message DeleteCategoryRequest {
+  int64 id = 1;
 }
 
-message DashboardBalanceRequest {}
-message DashboardBalanceResponse { double balance = 1; }
+message DeleteCategoryResponse {}
 
-message DashboardDebtRequest {}
-message DashboardDebtResponse { double debt = 1; }
+// ------------------------------------------------------
+// Dashboard Service
+// ------------------------------------------------------
 
-message DashboardTrendsRequest {
+service DashboardService {
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
+  rpc GetDebt(GetDebtRequest) returns (GetDebtResponse);
+  rpc GetTrends(GetTrendsRequest) returns (GetTrendsResponse);
+}
+
+message GetBalanceRequest {}
+message GetBalanceResponse {
+  google.type.Money balance = 1;
+}
+
+message GetDebtRequest {}
+message GetDebtResponse {
+  google.type.Money debt = 1;
+}
+
+message GetTrendsRequest {
   optional google.protobuf.Timestamp start = 1;
   optional google.protobuf.Timestamp end = 2;
 }
-message DashboardTrendsResponse { repeated TrendPoint trends = 1; }
 
-// --- Receipt Service ---
+message GetTrendsResponse {
+  repeated TrendPoint trends = 1;
+}
+
+// ------------------------------------------------------
+// Receipt Service
+// ------------------------------------------------------
 
 service ReceiptService {
-  // Manual Link: Client streams file content to link to a known transaction
+  // Manual link: client streams file content to link to a known transaction.
   rpc UploadReceipt(stream UploadReceiptRequest) returns (Receipt);
-  // Smart Match: Client streams file content, server finds best match
+
+  // Smart match: client streams file content, server finds best match.
   rpc MatchReceipt(stream MatchReceiptRequest) returns (Receipt);
 }
 
@@ -183,8 +237,7 @@ message UploadReceiptRequest {
   message Info {
     int64 transaction_id = 1;
     string filename = 2;
-    // UNSPECIFIED -> default to GEMINI in server
-    ReceiptProvider provider = 3;
+    ReceiptEngine engine = 3;
   }
 }
 
@@ -195,7 +248,6 @@ message MatchReceiptRequest {
   }
   message Info {
     string filename = 1;
-    // UNSPECIFIED -> default to GEMINI in server
-    ReceiptProvider provider = 2;
+    ReceiptEngine engine = 2;
   }
 }
