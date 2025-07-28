@@ -16,6 +16,12 @@ import (
 	"ariand/internal/db/postgres"
 	"ariand/internal/service"
 
+	grpcServer "ariand/internal/grpc"
+	"net"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
+
 	"context"
 	"errors"
 	"net/http"
@@ -49,8 +55,11 @@ func main() {
 	defer store.Close()
 	logger.Info("database connection established")
 
+	// --- services ---
+	services := service.New(store, logger, &cfg)
+
 	// --- http server ---
-	router := handlers.SetupRoutes(service.New(store, logger, &cfg))
+	router := handlers.SetupRoutes(services)
 
 	stack := middleware.CreateStack(
 		middleware.RequestID(),
@@ -71,10 +80,29 @@ func main() {
 	// --- start & graceful Shutdown ---
 	serverErrors := make(chan error, 1)
 
-	// start the server in a goroutine so it doesn't block
+	// --- gRPC server ---
 	go func() {
-		logger.Info("server is listening", "addr", server.Addr)
-		serverErrors <- server.ListenAndServe()
+		lis, err := net.Listen("tcp", cfg.GRPCPort)
+		if err != nil {
+			serverErrors <- err
+			return
+		}
+
+		s := grpc.NewServer()
+		grpcSrv := grpcServer.NewServer(services, logger.WithPrefix("grpc"))
+		grpcSrv.RegisterServices(s)
+
+		// Enable reflection for tools like Postman and grpcurl
+		reflection.Register(s)
+
+		logger.Info("gRPC server is listening", "addr", lis.Addr().String())
+		serverErrors <- s.Serve(lis)
+	}()
+
+	// start the HTTP server in a goroutine so it doesn't block
+	go func() {
+		logger.Info("http server is listening", "addr", server.Addr)
+		// serverErrors <- server.ListenAndServe()
 	}()
 
 	// channel to receive OS signals
@@ -95,9 +123,12 @@ func main() {
 		defer cancel()
 
 		if err := server.Shutdown(ctx); err != nil {
-			logger.Fatal("failed to gracefully shut down server", "err", err)
+			logger.Fatal("failed to gracefully shut down http server", "err", err)
 		}
+		logger.Info("http server shut down gracefully")
 
-		logger.Info("server shut down gracefully")
+		// TODO: gRPC server's GracefulStop() in a separate goroutine
 	}
+
+	logger.Info("all servers shut down")
 }

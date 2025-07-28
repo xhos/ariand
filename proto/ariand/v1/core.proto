@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package arian.d.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "ariand/gen/go/ariand/v1;ariandv1";
+
+// --- Enums ---
+
+enum AccountType {
+  ACCOUNT_TYPE_UNSPECIFIED = 0;
+  ACCOUNT_TYPE_CHEQUING = 1;
+  ACCOUNT_TYPE_SAVINGS = 2;
+  ACCOUNT_TYPE_CREDIT_CARD = 3;
+  ACCOUNT_TYPE_INVESTMENT = 4;
+  ACCOUNT_TYPE_OTHER = 5;
+}
+
+enum ReceiptProvider {
+  RECEIPT_PROVIDER_UNSPECIFIED = 0;
+  RECEIPT_PROVIDER_GEMINI = 1;
+  RECEIPT_PROVIDER_LOCAL = 2;
+}
+
+enum ReceiptParseStatus {
+  RECEIPT_PARSE_STATUS_UNSPECIFIED = 0;
+  RECEIPT_PARSE_STATUS_PENDING = 1;
+  RECEIPT_PARSE_STATUS_PARSED = 2;
+  RECEIPT_PARSE_STATUS_FAILED = 3;
+}
+
+enum ReceiptLinkStatus {
+  RECEIPT_LINK_STATUS_UNSPECIFIED = 0;
+  RECEIPT_LINK_STATUS_UNLINKED = 1;
+  RECEIPT_LINK_STATUS_MATCHED = 2;
+  RECEIPT_LINK_STATUS_NEEDS_VERIFICATION = 3;
+}
+
+// --- Messages ---
+
+message Account {
+  int64 id = 1;
+  string name = 2;
+  string bank = 3;
+  AccountType type = 4;
+  optional string alias = 5;
+  google.protobuf.Timestamp anchor_date = 6;
+  double anchor_balance = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message Category {
+  int64 id = 1;
+  string slug = 2;
+  string label = 3;
+  string color = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+message Transaction {
+  int64 id = 1;
+  optional string email_id = 2;
+  int64 account_id = 3;
+  google.protobuf.Timestamp tx_date = 4;
+  double tx_amount = 5;
+  string tx_currency = 6;
+  string tx_direction = 7;
+  optional string tx_desc = 8;
+  optional double balance_after = 9;
+  optional int64 category_id = 10;
+  optional string category_slug = 11;
+  optional string category_label = 12;
+  optional string category_color = 13;
+  string cat_status = 14;
+  optional string merchant = 15;
+  optional string user_notes = 16;
+  repeated string suggestions = 17;
+  optional int64 receipt_id = 18;
+  optional double foreign_amount = 19;
+  optional string foreign_currency = 20;
+  optional double exchange_rate = 21;
+  google.protobuf.Timestamp created_at = 22;
+  google.protobuf.Timestamp updated_at = 23;
+}
+
+message TransactionWithScore {
+  Transaction transaction = 1;
+  double merchant_score = 2;
+}
+
+message ReceiptItem {
+  int64 id = 1;
+  int64 receipt_id = 2;
+  optional int32 line_no = 3;
+  string name = 4;
+  optional double qty = 5;
+  optional double unit_price = 6;
+  optional double line_total = 7;
+  optional string sku = 8;
+  optional string category_hint = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message Receipt {
+  int64 id = 1;
+  optional int64 transaction_id = 2;
+  ReceiptProvider provider = 3;
+  ReceiptParseStatus parse_status = 4;
+  ReceiptLinkStatus link_status = 5;
+  repeated int64 match_suggestions = 6;
+  optional string merchant = 7;
+  optional google.protobuf.Timestamp purchase_date = 8;
+  optional double total_amount = 9;
+  optional string currency = 10;
+  optional double tax_amount = 11;
+  optional string raw_payload = 12;
+  optional string canonical_data = 13;
+  optional string image_url = 14;
+  // 15 intentionally unused to preserve numbering history.
+  optional double lat = 16;
+  optional double lon = 17;
+  optional string location_source = 18;
+  optional string location_label = 19;
+  google.protobuf.Timestamp created_at = 20;
+  google.protobuf.Timestamp updated_at = 21;
+  repeated ReceiptItem items = 22;
+}
+
+message TrendPoint {
+  // YYYY-MM-DD
+  string date = 1;
+  double income = 2;
+  double expenses = 3;
+}
+
+message Cursor {
+  optional google.protobuf.Timestamp date = 1;
+  optional int64 id = 2;
+}

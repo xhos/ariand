@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	Port                 string
+	GRPCPort             string // <-- NEW
 	APIKey               string
 	LogLevel             string
 	DatabaseURL          string
@@ -17,6 +18,7 @@ type Config struct {
 
 func Load() Config {
 	port := flag.String("port", "8080", "HTTP port")
+	grpcPort := flag.String("grpc-port", "50051", "gRPC port")
 	logLevel := flag.String("log-level", "info", "log level (debug|info|warn|error)")
 	flag.Parse()
 
@@ -47,6 +49,7 @@ func Load() Config {
 
 	return Config{
 		Port:                 ":" + *port,
+		GRPCPort:             ":" + *grpcPort,
 		APIKey:               apiKey,
 		LogLevel:             *logLevel,
 		DatabaseURL:          databaseUrl,

@@ -1,6 +1,7 @@
 {pkgs, ...}: {
   packages = with pkgs; [
     go-swag
+    protobuf
   ];
 
   languages.go.enable = true;

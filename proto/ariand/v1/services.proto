@@ -1,0 +1,201 @@
+syntax = "proto3";
+
+package arian.d.v1;
+
+import "ariand/v1/core.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "ariand/gen/go/ariand/v1;ariandv1";
+
+// --- Transaction Service ---
+
+service TransactionService {
+  rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse);
+  rpc GetTransaction(GetTransactionRequest) returns (Transaction);
+  rpc CreateTransaction(CreateTransactionRequest) returns (CreateTransactionResponse);
+  rpc UpdateTransaction(UpdateTransactionRequest) returns (Transaction);
+  rpc DeleteTransaction(DeleteTransactionRequest) returns (DeleteTransactionResponse);
+  rpc CategorizeTransaction(CategorizeTransactionRequest) returns (CategorizeTransactionResponse);
+  rpc IdentifyMerchant(IdentifyMerchantRequest) returns (IdentifyMerchantResponse);
+}
+
+message ListTransactionsRequest {
+  int32 limit = 1;
+  optional Cursor cursor = 2;
+  optional google.protobuf.Timestamp start_date = 3;
+  optional google.protobuf.Timestamp end_date = 4;
+  repeated int64 account_ids = 5;
+  repeated string categories = 6;
+  optional string direction = 7;
+  optional string merchant_search = 8;
+  optional string description_search = 9;
+  optional double amount_min = 10;
+  optional double amount_max = 11;
+  optional string currency = 12;
+}
+
+message ListTransactionsResponse {
+  repeated Transaction transactions = 1;
+  optional Cursor next_cursor = 2;
+}
+
+message GetTransactionRequest { int64 id = 1; }
+
+message CreateTransactionRequest {
+  optional string email_id = 1;
+  int64 account_id = 2;
+  google.protobuf.Timestamp tx_date = 3;
+  double tx_amount = 4;
+  string tx_currency = 5;
+  string tx_direction = 6;
+  optional string tx_desc = 7;
+  optional int64 category_id = 8;
+  optional string merchant = 9;
+  optional string user_notes = 10;
+  repeated string suggestions = 11;
+  optional double foreign_amount = 12;
+  optional string foreign_currency = 13;
+  optional double exchange_rate = 14;
+}
+
+message CreateTransactionResponse { int64 id = 1; }
+
+message UpdateTransactionRequest {
+  int64 id = 1;
+  Transaction updates = 2;
+  google.protobuf.FieldMask update_mask = 3;
+}
+
+message DeleteTransactionRequest { int64 id = 1; }
+message DeleteTransactionResponse {}
+
+message CategorizeTransactionRequest { int64 id = 1; }
+message CategorizeTransactionResponse {}
+
+message IdentifyMerchantRequest { int64 id = 1; }
+message IdentifyMerchantResponse {}
+
+// --- Account Service ---
+
+service AccountService {
+  rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse);
+  rpc GetAccount(GetAccountRequest) returns (Account);
+  rpc CreateAccount(CreateAccountRequest) returns (Account);
+  rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
+  rpc SetAnchor(SetAnchorRequest) returns (SetAnchorResponse);
+
+  // RENAMED to avoid collision with DashboardService.GetBalance
+  rpc GetAccountBalance(GetBalanceRequest) returns (GetBalanceResponse);
+}
+
+message ListAccountsRequest {}
+message ListAccountsResponse { repeated Account accounts = 1; }
+
+message GetAccountRequest { int64 id = 1; }
+
+message CreateAccountRequest {
+  string name = 1;
+  string bank = 2;
+  AccountType type = 3;
+  optional string alias = 4;
+  double anchor_balance = 5;
+}
+
+message DeleteAccountRequest { int64 id = 1; }
+message DeleteAccountResponse {}
+
+message SetAnchorRequest {
+  int64 id = 1;
+  double balance = 2;
+}
+message SetAnchorResponse {}
+
+message GetBalanceRequest { int64 id = 1; }
+message GetBalanceResponse { double balance = 1; }
+
+// --- Category Service ---
+
+service CategoryService {
+  rpc ListCategories(ListCategoriesRequest) returns (ListCategoriesResponse);
+  rpc GetCategory(GetCategoryRequest) returns (Category);
+  rpc CreateCategory(CreateCategoryRequest) returns (CreateCategoryResponse);
+  rpc UpdateCategory(UpdateCategoryRequest) returns (Category);
+  rpc DeleteCategory(DeleteCategoryRequest) returns (DeleteCategoryResponse);
+}
+
+message ListCategoriesRequest {}
+message ListCategoriesResponse { repeated Category categories = 1; }
+
+message GetCategoryRequest { int64 id = 1; }
+
+message CreateCategoryRequest {
+  string slug = 1;
+  string label = 2;
+  optional string color = 3;
+}
+
+message CreateCategoryResponse { int64 id = 1; }
+
+message UpdateCategoryRequest {
+  int64 id = 1;
+  Category updates = 2;
+  google.protobuf.FieldMask update_mask = 3;
+}
+
+message DeleteCategoryRequest { int64 id = 1; }
+message DeleteCategoryResponse {}
+
+// --- Dashboard Service ---
+
+service DashboardService {
+  rpc GetBalance(DashboardBalanceRequest) returns (DashboardBalanceResponse);
+  rpc GetDebt(DashboardDebtRequest) returns (DashboardDebtResponse);
+  rpc GetTrends(DashboardTrendsRequest) returns (DashboardTrendsResponse);
+}
+
+message DashboardBalanceRequest {}
+message DashboardBalanceResponse { double balance = 1; }
+
+message DashboardDebtRequest {}
+message DashboardDebtResponse { double debt = 1; }
+
+message DashboardTrendsRequest {
+  optional google.protobuf.Timestamp start = 1;
+  optional google.protobuf.Timestamp end = 2;
+}
+message DashboardTrendsResponse { repeated TrendPoint trends = 1; }
+
+// --- Receipt Service ---
+
+service ReceiptService {
+  // Manual Link: Client streams file content to link to a known transaction
+  rpc UploadReceipt(stream UploadReceiptRequest) returns (Receipt);
+  // Smart Match: Client streams file content, server finds best match
+  rpc MatchReceipt(stream MatchReceiptRequest) returns (Receipt);
+}
+
+message UploadReceiptRequest {
+  oneof data {
+    Info info = 1;
+    bytes chunk = 2;
+  }
+  message Info {
+    int64 transaction_id = 1;
+    string filename = 2;
+    // UNSPECIFIED -> default to GEMINI in server
+    ReceiptProvider provider = 3;
+  }
+}
+
+message MatchReceiptRequest {
+  oneof data {
+    Info info = 1;
+    bytes chunk = 2;
+  }
+  message Info {
+    string filename = 1;
+    // UNSPECIFIED -> default to GEMINI in server
+    ReceiptProvider provider = 2;
+  }
+}
