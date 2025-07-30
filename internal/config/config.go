@@ -27,9 +27,9 @@ func Load() Config {
 		panic("API_KEY environment variable is required")
 	}
 
-	databaseUrl := os.Getenv("DB_STRING")
+	databaseUrl := os.Getenv("DATABASE_URL")
 	if databaseUrl == "" {
-		panic("DB_STRING environment variable is required")
+		panic("DATABASE_URL environment variable is required")
 	}
 
 	receiptParserURL := os.Getenv("RECEIPT_PARSER_URL")

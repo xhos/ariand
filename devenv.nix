@@ -3,6 +3,8 @@
     go-swag
     protobuf
     buf
+    atlasgo
+    sqlc
   ];
 
   languages.go.enable = true;

@@ -47,7 +47,7 @@ func (s *Server) UploadReceipt(stream pb.ReceiptService_UploadReceiptServer) err
 		}
 	}
 
-	provider := fromProtoReceiptProvider(info.GetProvider())
+	provider := fromProtoReceiptEngine(info.GetEngine())
 	receipt, err := s.services.Receipts.LinkManual(stream.Context(), info.GetTransactionId(), &buf, info.GetFilename(), provider)
 	if err != nil {
 		return handleError(err)
@@ -92,7 +92,7 @@ func (s *Server) MatchReceipt(stream pb.ReceiptService_MatchReceiptServer) error
 		}
 	}
 
-	provider := fromProtoReceiptProvider(info.GetProvider())
+	provider := fromProtoReceiptEngine(info.GetEngine())
 	receipt, err := s.services.Receipts.MatchAndSuggest(stream.Context(), &buf, info.GetFilename(), provider)
 	if err != nil {
 		return handleError(err)

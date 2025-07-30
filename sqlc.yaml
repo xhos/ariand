@@ -1,0 +1,17 @@
+version: '2'
+sql:
+  - schema: 'db' # sqlc uses this just to understand DDL; we’ll point it at atlas-generated SQL later if needed
+    queries: 'internal/db/sql'
+    engine: 'postgresql'
+    gen:
+      go:
+        package: 'sqlcgen'
+        out: 'internal/db/sqlcgen'
+        sql_package: 'database/sql'
+        emit_interface: true
+        emit_empty_slices: true
+        emit_pointers_for_null_types: true
+overrides:
+  # tailor types if needed, example:
+  # - db_type: "pg_catalog.numeric"
+  #   go_type: "float64"

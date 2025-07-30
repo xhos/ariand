@@ -33,7 +33,7 @@ func (s *Server) ListTransactions(ctx context.Context, req *pb.ListTransactionsR
 		Limit:             queryLimit + 1, // over-fetch for pagination
 		AccountIDs:        req.GetAccountIds(),
 		Categories:        req.GetCategories(),
-		Direction:         req.GetDirection(),
+		Direction:         fromProtoTransactionDirection(req.GetDirection()),
 		MerchantSearch:    req.GetMerchantSearch(),
 		DescriptionSearch: req.GetDescriptionSearch(),
 		Currency:          req.GetCurrency(),
@@ -61,9 +61,8 @@ func (s *Server) ListTransactions(ctx context.Context, req *pb.ListTransactionsR
 			t := ts.AsTime()
 			opts.CursorDate = &t
 		}
-		if cur.GetId() > 0 {
-			id := cur.GetId()
-			opts.CursorID = &id
+		if cur.Id != nil {
+			opts.CursorID = cur.Id
 		}
 	}
 
@@ -96,6 +95,9 @@ func (s *Server) ListTransactions(ctx context.Context, req *pb.ListTransactionsR
 }
 
 func (s *Server) CreateTransaction(ctx context.Context, req *pb.CreateTransactionRequest) (*pb.CreateTransactionResponse, error) {
+	if req.GetTxAmount() == nil {
+		return nil, status.Error(codes.InvalidArgument, "tx_amount is required")
+	}
 	domainTxn := fromProtoCreateTransactionRequest(req)
 	id, err := s.services.Transactions.Create(ctx, domainTxn)
 	if err != nil {

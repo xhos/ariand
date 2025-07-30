@@ -25,10 +25,13 @@ func TestTransactionHandlers(t *testing.T) {
 
 	truncateTables(t, app.db.DB, "transactions", "categories", "accounts")
 
-	acc1, err := app.db.CreateAccount(ctx, &domain.Account{Name: "Test Chequing", Type: "chequing", Bank: "Bank A", AnchorBalance: 1000, AnchorDate: time.Now()})
+	// Be explicit with anchor date to make test more robust
+	anchorDate := time.Now().Add(-48 * time.Hour)
+
+	acc1, err := app.db.CreateAccount(ctx, &domain.Account{Name: "Test Chequing", Type: "chequing", Bank: "Bank A", AnchorBalance: 1000, AnchorDate: anchorDate, AnchorCurrency: "CAD"})
 	require.NoError(t, err)
 
-	acc2, err := app.db.CreateAccount(ctx, &domain.Account{Name: "Test Visa", Type: "credit_card", Bank: "Bank B", AnchorBalance: -500, AnchorDate: time.Now()})
+	acc2, err := app.db.CreateAccount(ctx, &domain.Account{Name: "Test Visa", Type: "credit_card", Bank: "Bank B", AnchorBalance: -500, AnchorDate: anchorDate, AnchorCurrency: "CAD"})
 	require.NoError(t, err)
 
 	cat1ID, err := app.db.CreateCategory(ctx, "food.groceries", "Groceries", "#ff0000")

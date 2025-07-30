@@ -15,15 +15,23 @@ type AccountHandler struct {
 }
 
 type CreateAccountRequest struct {
-	Name          string  `json:"name" example:"main chequing"`
-	Bank          string  `json:"bank" example:"big bank inc."`
-	Type          string  `json:"type" example:"chequing"`
-	Alias         *string `json:"alias,omitempty" example:"main"`
-	AnchorBalance float64 `json:"anchor_balance" example:"1234.56"`
+	Name           string  `json:"name" example:"main chequing"`
+	Bank           string  `json:"bank" example:"big bank inc."`
+	Type           string  `json:"type" example:"chequing"`
+	Alias          *string `json:"alias,omitempty" example:"main"`
+	AnchorBalance  float64 `json:"anchor_balance" example:"1234.56"`
+	AnchorCurrency string  `json:"anchor_currency,omitempty" example:"CAD"`
 }
 
 type SetAnchorRequest struct {
-	Balance float64 `json:"balance" example:"1234.56"`
+	Balance  float64 `json:"balance" example:"1234.56"`
+	Currency string  `json:"currency" example:"CAD"`
+}
+
+// AccountBalanceResponse is a specific response for this handler.
+type AccountBalanceResponse struct {
+	Balance  float64 `json:"balance" example:"1234.56"`
+	Currency string  `json:"currency" example:"CAD"`
 }
 
 // Create godoc
@@ -45,12 +53,13 @@ func (h *AccountHandler) Create(r *http.Request) (any, *HTTPError) {
 	}
 
 	account := &domain.Account{
-		Name:          req.Name,
-		Bank:          req.Bank,
-		Type:          domain.AccountType(req.Type),
-		Alias:         req.Alias,
-		AnchorDate:    time.Now(),
-		AnchorBalance: req.AnchorBalance,
+		Name:           req.Name,
+		Bank:           req.Bank,
+		Type:           domain.AccountType(req.Type),
+		Alias:          req.Alias,
+		AnchorDate:     time.Now(),
+		AnchorBalance:  req.AnchorBalance,
+		AnchorCurrency: req.AnchorCurrency,
 	}
 
 	created, err := h.service.Create(r.Context(), account)
@@ -142,8 +151,8 @@ func (h *AccountHandler) Delete(r *http.Request) (any, *HTTPError) {
 // @Description  Updates the anchor balance for an account and sets the anchor date to now.
 // @Tags         accounts
 // @Accept       json
-// @Param        id       path      int               true  "Account ID"
-// @Param        payload  body      SetAnchorRequest  true  "Anchor Payload (balance only)"
+// @Param        id       path      int             true  "Account ID"
+// @Param        payload  body      SetAnchorRequest  true  "Anchor Payload (balance and currency)"
 // @Success      204
 // @Failure      400      {object}  ErrorResponse "invalid request payload or id format"
 // @Failure      404      {object}  ErrorResponse "account not found"
@@ -161,7 +170,7 @@ func (h *AccountHandler) SetAnchor(r *http.Request) (any, *HTTPError) {
 		return nil, NewHTTPError(http.StatusBadRequest, "invalid json payload")
 	}
 
-	if err := h.service.SetAnchor(r.Context(), id, in.Balance); err != nil {
+	if err := h.service.SetAnchor(r.Context(), id, in.Balance, in.Currency); err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return nil, NewHTTPError(http.StatusNotFound, "resource not found")
 		}
@@ -177,7 +186,7 @@ func (h *AccountHandler) SetAnchor(r *http.Request) (any, *HTTPError) {
 // @Tags         accounts
 // @Produce      json
 // @Param        id   path      int  true  "Account ID"
-// @Success      200  {object}  BalanceResponse
+// @Success      200  {object}  AccountBalanceResponse
 // @Failure      400  {object}  ErrorResponse "invalid id format"
 // @Failure      404  {object}  ErrorResponse "account not found"
 // @Failure      500  {object}  ErrorResponse
@@ -189,7 +198,7 @@ func (h *AccountHandler) Balance(r *http.Request) (any, *HTTPError) {
 		return nil, NewHTTPError(http.StatusBadRequest, "invalid id format")
 	}
 
-	bal, err := h.service.Balance(r.Context(), id)
+	bal, currency, err := h.service.Balance(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return nil, NewHTTPError(http.StatusNotFound, "resource not found")
@@ -197,5 +206,5 @@ func (h *AccountHandler) Balance(r *http.Request) (any, *HTTPError) {
 		return nil, NewHTTPError(http.StatusInternalServerError, "internal server error")
 	}
 
-	return BalanceResponse{Balance: bal}, nil
+	return AccountBalanceResponse{Balance: bal, Currency: currency}, nil
 }

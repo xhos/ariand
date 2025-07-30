@@ -3,20 +3,24 @@ package grpc
 import (
 	pb "ariand/gen/go/ariand/v1"
 	"ariand/internal/domain"
+	"fmt"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx/types"
 	"github.com/lib/pq"
+	"google.golang.org/genproto/googleapis/type/date"
+	"google.golang.org/genproto/googleapis/type/money"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // =======================
-//  TO PROTO (Domain -> PB)
+//
+//	TO PROTO (Domain -> PB)
+//
 // =======================
-
 func toProtoTimestamp(t time.Time) *timestamppb.Timestamp {
 	if t.IsZero() {
 		return nil
@@ -52,7 +56,7 @@ func toProtoAccount(a *domain.Account) *pb.Account {
 		Type:          toProtoAccountType(a.Type),
 		Alias:         a.Alias,
 		AnchorDate:    toProtoTimestamp(a.AnchorDate),
-		AnchorBalance: a.AnchorBalance,
+		AnchorBalance: float64ToMoney(a.AnchorBalance, a.AnchorCurrency),
 		CreatedAt:     toProtoTimestamp(a.CreatedAt),
 		UpdatedAt:     toProtoTimestamp(a.UpdatedAt),
 	}
@@ -76,41 +80,46 @@ func toProtoTransaction(t *domain.Transaction) *pb.Transaction {
 	if t == nil {
 		return nil
 	}
+	var balAfter *money.Money
+	if t.BalanceAfter != nil {
+		balAfter = float64ToMoney(*t.BalanceAfter, t.TxCurrency)
+	}
+	var fAmount *money.Money
+	if t.ForeignAmount != nil && t.ForeignCurrency != nil {
+		fAmount = float64ToMoney(*t.ForeignAmount, *t.ForeignCurrency)
+	}
+
 	return &pb.Transaction{
-		Id:              t.ID,
-		EmailId:         t.EmailID,
-		AccountId:       t.AccountID,
-		TxDate:          toProtoTimestamp(t.TxDate),
-		TxAmount:        t.TxAmount,
-		TxCurrency:      t.TxCurrency,
-		TxDirection:     t.TxDirection,
-		TxDesc:          t.TxDesc,
-		BalanceAfter:    t.BalanceAfter,
-		CategoryId:      t.CategoryID,
-		CategorySlug:    t.CategorySlug,
-		CategoryLabel:   t.CategoryLabel,
-		CategoryColor:   t.CategoryColor,
-		CatStatus:       t.CatStatus,
-		Merchant:        t.Merchant,
-		UserNotes:       t.UserNotes,
-		Suggestions:     []string(t.Suggestions),
-		ReceiptId:       t.ReceiptID,
-		ForeignAmount:   t.ForeignAmount,
-		ForeignCurrency: t.ForeignCurrency,
-		ExchangeRate:    t.ExchangeRate,
-		CreatedAt:       toProtoTimestamp(t.CreatedAt),
-		UpdatedAt:       toProtoTimestamp(t.UpdatedAt),
+		Id:            t.ID,
+		EmailId:       t.EmailID,
+		AccountId:     t.AccountID,
+		TxDate:        toProtoTimestamp(t.TxDate),
+		TxAmount:      float64ToMoney(t.TxAmount, t.TxCurrency),
+		Direction:     toProtoTransactionDirection(t.TxDirection),
+		Description:   t.TxDesc,
+		BalanceAfter:  balAfter,
+		CategoryId:    t.CategoryID,
+		CategorySlug:  t.CategorySlug,
+		CatStatus:     toProtoCategorizationStatus(t.CatStatus),
+		Merchant:      t.Merchant,
+		UserNotes:     t.UserNotes,
+		Suggestions:   []string(t.Suggestions),
+		ReceiptId:     t.ReceiptID,
+		ForeignAmount: fAmount,
+		ExchangeRate:  t.ExchangeRate,
+		CreatedAt:     toProtoTimestamp(t.CreatedAt),
+		UpdatedAt:     toProtoTimestamp(t.UpdatedAt),
 	}
 }
 
-func toProtoReceiptProvider(p domain.ReceiptProvider) pb.ReceiptProvider {
+func toProtoReceiptEngine(p domain.ReceiptProvider) pb.ReceiptEngine {
 	switch p {
 	case domain.ProviderGemini:
-		return pb.ReceiptProvider_RECEIPT_PROVIDER_GEMINI
+		return pb.ReceiptEngine_RECEIPT_ENGINE_GEMINI
 	case domain.ProviderLocal:
-		return pb.ReceiptProvider_RECEIPT_PROVIDER_LOCAL
+		return pb.ReceiptEngine_RECEIPT_ENGINE_LOCAL
 	default:
-		return pb.ReceiptProvider_RECEIPT_PROVIDER_UNSPECIFIED
+		return pb.ReceiptEngine_RECEIPT_ENGINE_UNSPECIFIED
 	}
 }
 
@@ -121,19 +130,21 @@ func toProtoReceipt(r *domain.Receipt) *pb.Receipt {
 
 	items := make([]*pb.ReceiptItem, len(r.Items))
 	for i, item := range r.Items {
-		var lineNo *int32
+		var lineNo int32
 		if item.LineNo != nil {
-			v := int32(*item.LineNo)
-			lineNo = &v
+			lineNo = int32(*item.LineNo)
 		}
+
+		currency := deref(r.Currency)
+
 		items[i] = &pb.ReceiptItem{
 			Id:           item.ID,
 			ReceiptId:    item.ReceiptID,
 			LineNo:       lineNo,
 			Name:         item.Name,
-			Qty:          item.Qty,
-			UnitPrice:    item.UnitPrice,
-			LineTotal:    item.LineTotal,
+			Quantity:     deref(item.Qty),
+			UnitPrice:    float64ToMoney(deref(item.UnitPrice), currency),
+			LineTotal:    float64ToMoney(deref(item.LineTotal), currency),
 			Sku:          item.SKU,
 			CategoryHint: item.CategoryHint,
 			CreatedAt:    toProtoTimestamp(item.CreatedAt),
@@ -142,27 +153,31 @@ func toProtoReceipt(r *domain.Receipt) *pb.Receipt {
 	}
 
 	return &pb.Receipt{
-		Id:               r.ID,
-		TransactionId:    r.TransactionID,
-		Provider:         toProtoReceiptProvider(r.Provider),
-		MatchSuggestions: r.MatchSuggestions,
-		Merchant:         r.Merchant,
-		PurchaseDate:     toProtoTimestamp(deref(r.PurchaseDate)),
-		TotalAmount:      r.TotalAmount,
-		RawPayload:       stringPtr(r.RawPayload),
-		CanonicalData:    stringPtr(r.CanonicalData),
-		Items:            items,
-		CreatedAt:        toProtoTimestamp(r.CreatedAt),
-		UpdatedAt:        toProtoTimestamp(r.UpdatedAt),
+		Id:            r.ID,
+		TransactionId: r.TransactionID,
+		Engine:        toProtoReceiptEngine(r.Provider),
+		ParseStatus:   toProtoReceiptParseStatus(r.ParseStatus),
+		LinkStatus:    toProtoReceiptLinkStatus(r.LinkStatus),
+		MatchIds:      r.MatchSuggestions,
+		Merchant:      r.Merchant,
+		PurchaseDate:  timeToDate(deref(r.PurchaseDate)),
+		TotalAmount:   float64ToMoney(deref(r.TotalAmount), deref(r.Currency)),
+		TaxAmount:     float64ToMoney(deref(r.TaxAmount), deref(r.Currency)),
+		RawPayload:    stringPtr(r.RawPayload),
+		CanonicalData: stringPtr(r.CanonicalData),
+		Items:         items,
+		CreatedAt:     toProtoTimestamp(r.CreatedAt),
+		UpdatedAt:     toProtoTimestamp(r.UpdatedAt),
 	}
 }
 
-// =======================
-//  FROM PROTO (PB -> Domain)
-// =======================
-
+// =========================
+//
+//	FROM PROTO (PB -> Domain)
+//
+// =========================
 func fromProtoTimestamp(ts *timestamppb.Timestamp) time.Time {
-	if ts == nil {
+	if ts == nil || !ts.IsValid() {
 		return time.Time{}
 	}
 	return ts.AsTime()
@@ -186,62 +201,72 @@ func fromProtoAccountType(at pb.AccountType) domain.AccountType {
 }
 
 func fromProtoCreateAccountRequest(req *pb.CreateAccountRequest) *domain.Account {
+	balance, currency := moneyToFloat64(req.GetAnchorBalance())
 	return &domain.Account{
-		Name:          req.GetName(),
-		Bank:          req.GetBank(),
-		Type:          fromProtoAccountType(req.GetType()),
-		Alias:         req.Alias,
-		AnchorBalance: req.GetAnchorBalance(),
-		AnchorDate:    time.Now(), // matches REST: anchor set at creation
+		Name:           req.GetName(),
+		Bank:           req.GetBank(),
+		Type:           fromProtoAccountType(req.GetType()),
+		Alias:          req.Alias,
+		AnchorBalance:  balance,
+		AnchorCurrency: currency,
+		AnchorDate:     time.Now(),
 	}
 }
 
 func fromProtoCreateTransactionRequest(req *pb.CreateTransactionRequest) *domain.Transaction {
+	var fAmount *float64
+	var fCurrency *string
+	if req.GetForeignAmount() != nil {
+		v, c := moneyToFloat64(req.GetForeignAmount())
+		fAmount = &v
+		fCurrency = &c
+	}
+	txDesc := req.GetTxDesc()
+	txAmount, txCurrency := moneyToFloat64(req.GetTxAmount())
+
 	return &domain.Transaction{
 		EmailID:         req.EmailId,
-		AccountID:       req.AccountId,
-		TxDate:          fromProtoTimestamp(req.TxDate),
-		TxAmount:        req.TxAmount,
-		TxCurrency:      req.TxCurrency,
-		TxDirection:     req.TxDirection,
-		TxDesc:          req.TxDesc,
+		AccountID:       req.GetAccountId(),
+		TxDate:          fromProtoTimestamp(req.GetTxDate()),
+		TxAmount:        txAmount,
+		TxCurrency:      txCurrency,
+		TxDirection:     fromProtoTransactionDirection(req.GetTxDirection()),
+		TxDesc:          &txDesc,
 		CategoryID:      req.CategoryId,
 		Merchant:        req.Merchant,
 		UserNotes:       req.UserNotes,
 		Suggestions:     pq.StringArray(req.Suggestions),
-		ForeignAmount:   req.ForeignAmount,
-		ForeignCurrency: req.ForeignCurrency,
+		ForeignAmount:   fAmount,
+		ForeignCurrency: fCurrency,
 		ExchangeRate:    req.ExchangeRate,
 	}
 }
 
-func fromProtoReceiptProvider(p pb.ReceiptProvider) domain.ReceiptProvider {
+func fromProtoReceiptEngine(p pb.ReceiptEngine) domain.ReceiptProvider {
 	switch p {
-	case pb.ReceiptProvider_RECEIPT_PROVIDER_GEMINI:
+	case pb.ReceiptEngine_RECEIPT_ENGINE_GEMINI:
 		return domain.ProviderGemini
-	case pb.ReceiptProvider_RECEIPT_PROVIDER_LOCAL:
+	case pb.ReceiptEngine_RECEIPT_ENGINE_LOCAL:
 		return domain.ProviderLocal
 	default:
-		// Mirror REST default when provider not specified.
-		return domain.ProviderGemini
+		return domain.ProviderGemini // Default to Gemini
 	}
 }
 
 // =======================
-//  HELPERS
+//
+//	HELPERS
+//
 // =======================
-
 func fieldsFromUpdateMask(mask *fieldmaskpb.FieldMask, in interface{}) map[string]any {
 	fields := make(map[string]any)
 	if mask == nil || in == nil {
 		return fields
 	}
-
 	val := reflect.ValueOf(in)
 	if val.Kind() == reflect.Ptr {
 		val = val.Elem()
 	}
-
 	for _, path := range mask.Paths {
 		goFieldName := snakeToCamel(path)
 		fieldVal := val.FieldByName(goFieldName)
@@ -291,4 +316,110 @@ func stringPtr(jt types.JSONText) *string {
 	}
 	s := string(jt)
 	return &s
+}
+
+func float64ToMoney(val float64, currency string) *money.Money {
+	if currency == "" {
+		currency = "XXX" // ISO 4217 code for "no currency"
+	}
+	units := int64(val)
+	nanos := int32((val - float64(units)) * 1e9)
+	return &money.Money{
+		CurrencyCode: currency,
+		Units:        units,
+		Nanos:        nanos,
+	}
+}
+
+func moneyToFloat64(m *money.Money) (float64, string) {
+	if m == nil {
+		return 0.0, ""
+	}
+	val := float64(m.Units) + float64(m.Nanos)/1e9
+	return val, m.CurrencyCode
+}
+
+func timeToDate(t time.Time) *date.Date {
+	if t.IsZero() {
+		return nil
+	}
+	return &date.Date{
+		Year:  int32(t.Year()),
+		Month: int32(t.Month()),
+		Day:   int32(t.Day()),
+	}
+}
+
+func stringToDate(s string) (*date.Date, error) {
+	if s == "" {
+		return nil, nil
+	}
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse date string '%s': %w", s, err)
+	}
+	return timeToDate(t), nil
+}
+
+func toProtoCategorizationStatus(s domain.CategorizationStatus) pb.CategorizationStatus {
+	switch s {
+	case domain.CatStatusNone:
+		return pb.CategorizationStatus_CATEGORIZATION_STATUS_NONE
+	case domain.CatStatusAuto, domain.CatStatusAI:
+		return pb.CategorizationStatus_CATEGORIZATION_STATUS_AUTO
+	case domain.CatStatusManual:
+		return pb.CategorizationStatus_CATEGORIZATION_STATUS_MANUAL
+	case domain.CatStatusVerified:
+		return pb.CategorizationStatus_CATEGORIZATION_STATUS_VERIFIED
+	default:
+		return pb.CategorizationStatus_CATEGORIZATION_STATUS_UNSPECIFIED
+	}
+}
+
+func toProtoReceiptParseStatus(s domain.ReceiptParseStatus) pb.ReceiptParseStatus {
+	switch s {
+	case "pending":
+		return pb.ReceiptParseStatus_RECEIPT_PARSE_STATUS_PENDING
+	case "success":
+		return pb.ReceiptParseStatus_RECEIPT_PARSE_STATUS_SUCCESS
+	case "failed":
+		return pb.ReceiptParseStatus_RECEIPT_PARSE_STATUS_FAILED
+	default:
+		return pb.ReceiptParseStatus_RECEIPT_PARSE_STATUS_UNSPECIFIED
+	}
+}
+
+func toProtoReceiptLinkStatus(s domain.ReceiptLinkStatus) pb.ReceiptLinkStatus {
+	switch s {
+	case "unlinked":
+		return pb.ReceiptLinkStatus_RECEIPT_LINK_STATUS_UNLINKED
+	case "matched":
+		return pb.ReceiptLinkStatus_RECEIPT_LINK_STATUS_MATCHED
+	case "needs_verification":
+		return pb.ReceiptLinkStatus_RECEIPT_LINK_STATUS_NEEDS_VERIFICATION
+	default:
+		return pb.ReceiptLinkStatus_RECEIPT_LINK_STATUS_UNSPECIFIED
+	}
+}
+
+func toProtoTransactionDirection(s string) pb.TransactionDirection {
+	switch s {
+	case "in":
+		return pb.TransactionDirection_TRANSACTION_DIRECTION_INCOMING
+	case "out":
+		return pb.TransactionDirection_TRANSACTION_DIRECTION_OUTGOING
+	default:
+		return pb.TransactionDirection_TRANSACTION_DIRECTION_UNSPECIFIED
+	}
+}
+
+func fromProtoTransactionDirection(e pb.TransactionDirection) string {
+	switch e {
+	case pb.TransactionDirection_TRANSACTION_DIRECTION_INCOMING:
+		return "in"
+	case pb.TransactionDirection_TRANSACTION_DIRECTION_OUTGOING:
+		return "out"
+	default:
+		return ""
+	}
 }

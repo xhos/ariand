@@ -116,7 +116,7 @@ func (s *receiptSvc) readAndStoreImage(ctx context.Context, file io.Reader, file
 	return buf.Bytes(), hash, nil
 }
 
-func (s *receiptSvc) preserveImage(ctx context.Context, data []byte, filename string, hash []byte) error {
+func (s *receiptSvc) preserveImage(_ context.Context, _ []byte, _ string, _ []byte) error {
 	// TODO: write data to persistent storage and set receipt.ImageURL
 	return nil
 }
@@ -191,7 +191,7 @@ func (s *receiptSvc) scoreAndSelectBestMatch(candidates []*domain.TransactionWit
 
 	var results []MatchResult
 	for _, c := range candidates {
-		amountScore := scoreAmount(c.TxAmount, *receipt.TotalAmount)
+		amountScore := scoreAmount(c.TxAmount, deref(receipt.TotalAmount))
 		dateScore := dateScore(c.TxDate, *receipt.PurchaseDate)
 		final := amountScore*0.45 + dateScore*0.35 + c.MerchantScore*0.2
 		if final >= threshold {
@@ -273,4 +273,13 @@ func (s *receiptSvc) populateReceiptFromParsedData(r *domain.Receipt, p *receipt
 	} else {
 		s.log.Error("failed to marshal canonical data", "error", err)
 	}
+}
+
+// deref is a helper to safely dereference a pointer to any type.
+func deref[T any](p *T) T {
+	if p == nil {
+		var zero T
+		return zero
+	}
+	return *p
 }
