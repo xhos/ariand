@@ -8,9 +8,7 @@ import "google/type/money.proto";
 
 option go_package = "ariand/gen/go/ariand/v1;ariandv1";
 
-// ------------------------------------------------------
-// Enums
-// ------------------------------------------------------
+// ----- enums ----------
 
 enum AccountType {
   ACCOUNT_TYPE_UNSPECIFIED = 0;
@@ -55,25 +53,21 @@ enum ReceiptLinkStatus {
   RECEIPT_LINK_STATUS_NEEDS_VERIFICATION = 3;
 }
 
-// ------------------------------------------------------
-// Reusable Messages
-// ------------------------------------------------------
+// ----- reusable messages ----------
 
 message Location {
-  double latitude = 1; // WGS84 decimal degrees
-  double longitude = 2; // WGS84 decimal degrees
-  string source = 3; // e.g. "gps", "ip", "manual"
+  double latitude = 1;       // WGS84 decimal degrees
+  double longitude = 2;      // WGS84 decimal degrees
+  string source = 3;         // e.g. "gps", "ip", "manual"
+  optional string label = 4; // human-readable place name
 }
 
 message Cursor {
-  // Keyset pagination: either/both may be supplied/returned.
   google.protobuf.Timestamp date = 1;
   optional int64 id = 2;
 }
 
-// ------------------------------------------------------
-// Core Domain Messages
-// ------------------------------------------------------
+// ----- core domain messages ----------
 
 message Account {
   int64 id = 1;
@@ -89,7 +83,7 @@ message Account {
 
 message Category {
   int64 id = 1;
-  string slug = 2; // e.g. "food.groceries"
+  string slug = 2;  // e.g. "food.groceries"
   string label = 3; // e.g. "Groceries"
   string color = 4; // hex code, e.g. "#FF0000"
   google.protobuf.Timestamp created_at = 5;
@@ -99,39 +93,38 @@ message Category {
 message Transaction {
   int64 id = 1;
   google.protobuf.Timestamp tx_date = 2;
-  google.type.Money tx_amount = 3; // contains currency
+  google.type.Money tx_amount = 3;
   TransactionDirection direction = 4;
   int64 account_id = 5;
 
-  // Optional metadata
+  // metadata
   optional string email_id = 6;
   optional string description = 7;
   optional Location location = 8;
 
-  // Categorization
+  // categorization
   optional int64 category_id = 9;
-  optional string category_slug = 10;
-  CategorizationStatus cat_status = 11;
+  CategorizationStatus cat_status = 10;
 
-  // Merchant & notes
-  optional string merchant = 12;
-  optional string user_notes = 13;
+  // merchant & notes
+  optional string merchant = 11;
+  optional string user_notes = 12;
 
-  // Balance after this TX (server-computed)
-  google.type.Money balance_after = 14;
+  // balance after this tx
+  google.type.Money balance_after = 13;
 
   // AI suggestions
-  repeated string suggestions = 15;
+  repeated string suggestions = 14;
 
-  // Receipt linkage
-  optional int64 receipt_id = 16;
+  // receipt linkage
+  optional int64 receipt_id = 15;
 
-  // FX details (if present)
-  optional google.type.Money foreign_amount = 17;
-  optional double exchange_rate = 18;
+  // FX details
+  optional google.type.Money foreign_amount = 16;
+  optional double exchange_rate = 17;
 
-  google.protobuf.Timestamp created_at = 19;
-  google.protobuf.Timestamp updated_at = 20;
+  google.protobuf.Timestamp created_at = 18;
+  google.protobuf.Timestamp updated_at = 19;
 }
 
 message TransactionWithScore {
@@ -155,28 +148,28 @@ message ReceiptItem {
 
 message Receipt {
   int64 id = 1;
-  optional int64 transaction_id = 2;
   ReceiptEngine engine = 3;
   ReceiptParseStatus parse_status = 4;
   ReceiptLinkStatus link_status = 5;
   repeated int64 match_ids = 6;
 
-  // Extracted/normalized fields (optional)
+  // extracted fields
   optional string merchant = 7;
   optional google.type.Date purchase_date = 8;
   optional google.type.Money total_amount = 9;
   optional google.type.Money tax_amount = 10;
 
-  // Metadata & payloads
+  // metadata & payloads
   optional Location location = 11;
   optional string raw_payload = 12;
   optional string canonical_data = 13;
 
-  // Timestamps & items
+  // timestamps & items
   google.protobuf.Timestamp created_at = 14;
   google.protobuf.Timestamp updated_at = 15;
   repeated ReceiptItem items = 16;
 }
+
 
 message TrendPoint {
   google.type.Date date = 1; // YYYY-MM-DD

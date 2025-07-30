@@ -9,9 +9,7 @@ import "google/type/money.proto";
 
 option go_package = "ariand/gen/go/ariand/v1;ariandv1";
 
-// ------------------------------------------------------
-// Transaction Service
-// ------------------------------------------------------
+// ----- transaction service ----------
 
 service TransactionService {
   rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse);
@@ -90,9 +88,7 @@ message IdentifyMerchantRequest {
 
 message IdentifyMerchantResponse {}
 
-// ------------------------------------------------------
-// Account Service
-// ------------------------------------------------------
+// ----- account service ----------
 
 service AccountService {
   rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse);
@@ -100,8 +96,7 @@ service AccountService {
   rpc CreateAccount(CreateAccountRequest) returns (Account);
   rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
   rpc SetAnchor(SetAnchorRequest) returns (SetAnchorResponse);
-
-  // Avoids name collision with DashboardService.GetBalance
+  rpc UpdateAccount(UpdateAccountRequest) returns (Account);
   rpc GetAccountBalance(GetAccountBalanceRequest) returns (GetAccountBalanceResponse);
 }
 
@@ -136,6 +131,12 @@ message SetAnchorRequest {
 
 message SetAnchorResponse {}
 
+message UpdateAccountRequest {
+  int64 id = 1;
+  Account updates = 2;
+  google.protobuf.FieldMask update_mask = 3;
+}
+
 message GetAccountBalanceRequest {
   int64 id = 1;
 }
@@ -144,9 +145,7 @@ message GetAccountBalanceResponse {
   google.type.Money balance = 1;
 }
 
-// ------------------------------------------------------
-// Category Service
-// ------------------------------------------------------
+// ----- category service ----------
 
 service CategoryService {
   rpc ListCategories(ListCategoriesRequest) returns (ListCategoriesResponse);
@@ -169,7 +168,7 @@ message GetCategoryRequest {
 message CreateCategoryRequest {
   string slug = 1;
   string label = 2;
-  optional string color = 3;
+  string color = 3;
 }
 
 message CreateCategoryResponse {
@@ -188,9 +187,7 @@ message DeleteCategoryRequest {
 
 message DeleteCategoryResponse {}
 
-// ------------------------------------------------------
-// Dashboard Service
-// ------------------------------------------------------
+// ----- dashboard service ----------
 
 service DashboardService {
   rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
@@ -217,15 +214,10 @@ message GetTrendsResponse {
   repeated TrendPoint trends = 1;
 }
 
-// ------------------------------------------------------
-// Receipt Service
-// ------------------------------------------------------
+// ----- receipt service ----------
 
 service ReceiptService {
-  // Manual link: client streams file content to link to a known transaction.
   rpc UploadReceipt(stream UploadReceiptRequest) returns (Receipt);
-
-  // Smart match: client streams file content, server finds best match.
   rpc MatchReceipt(stream MatchReceiptRequest) returns (Receipt);
 }
 
