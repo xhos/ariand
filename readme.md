@@ -1,15 +1,28 @@
-Step 2: Generate Go Code
+# ariand
 
-Install the necessary tools if you haven't already:
-go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+the main backend service for the arian project.
 
-Make sure the protoc compiler is installed on your system. Then, from the root of your project, run this command:
-Shell
+## development
 
-protoc --proto_path=proto \
-  --go_out=gen/go --go_opt=paths=source_relative \
-  --go-grpc_out=gen/go --go-grpc_opt=paths=source_relative \
-  proto/ariand/v1/*.proto
+### environment
 
-This will create a gen/go/ariand/v1 directory containing the generated Go files (core.pb.go, services.pb.go, services_grpc.pb.go).
+i use devenv to manage my development environment. that includes installing the dependencies and setting up the necessary tools and scripts. you can find the configuration in the [devenv.nix](./devenv.nix) file. it's not required, but highly recommended for a consistent development experience.
+
+### sql migrations
+
+i use [goose 🪿](https://github.com/pressly/goose) to manage sql migrations. migration files are located in [migrations](./internal/db/migrations). you can run them using the `migrate` script defined in [devenv.nix](./devenv.nix). it will automatically apply the migrations to the database.
+
+### notes
+
+#### dev postgres
+
+```shell
+docker run -d \
+  --name arian-postgres \
+  -p 5432:5432 \
+  -e POSTGRES_USER=arian \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB=arian \
+  -v postgres_data:/var/lib/postgresql/data \
+  postgres:17-alpine
+```

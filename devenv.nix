@@ -3,7 +3,7 @@
     go-swag
     protobuf
     buf
-    atlasgo
+    goose
     sqlc
   ];
 
@@ -27,6 +27,10 @@
 
   scripts.docs.exec = ''
     swag init -g cmd/main.go
+  '';
+
+  scripts.migrate.exec = ''
+    goose -dir internal/db/migrations postgres "$DATABASE_URL" up
   '';
 
   git-hooks.hooks = {
