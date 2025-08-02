@@ -4,6 +4,8 @@ the main backend service for the arian project.
 
 ## development
 
+> behold, this codebase is the pinnacle of DDD (dilly-dally driven development)
+
 ### environment
 
 i use devenv to manage my development environment. that includes installing the dependencies and setting up the necessary tools and scripts. you can find the configuration in the [devenv.nix](./devenv.nix) file. it's not required, but highly recommended for a consistent development experience.

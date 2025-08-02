@@ -1,58 +1,87 @@
--- name: ListAccounts :many
-SELECT id, name, bank, account_type, alias,
-       anchor_date, anchor_balance, anchor_currency,
-       created_at, updated_at
-FROM accounts
-ORDER BY created_at;
+-- name: ListAccountsForUser :many
+SELECT a.id, a.owner_id, a.name, a.bank, a.account_type, a.alias,
+       a.anchor_date, a.anchor_balance, a.anchor_currency,
+       a.created_at, a.updated_at,
+       (a.owner_id = @user_id::uuid) AS is_owner
+FROM accounts a
+LEFT JOIN account_users au ON au.account_id = a.id AND au.user_id = @user_id::uuid
+WHERE a.owner_id = @user_id::uuid OR au.user_id IS NOT NULL
+ORDER BY is_owner DESC, a.created_at;
 
--- name: GetAccount :one
-SELECT id, name, bank, account_type, alias,
-       anchor_date, anchor_balance, anchor_currency,
-       created_at, updated_at
-FROM accounts
-WHERE id = @id::bigint;
+-- name: GetAccountForUser :one
+SELECT a.id, a.owner_id, a.name, a.bank, a.account_type, a.alias,
+       a.anchor_date, a.anchor_balance, a.anchor_currency,
+       a.created_at, a.updated_at,
+       (a.owner_id = @user_id::uuid) AS is_owner
+FROM accounts a
+LEFT JOIN account_users au ON au.account_id = a.id AND au.user_id = @user_id::uuid
+WHERE a.id = @id::bigint
+  AND (a.owner_id = @user_id::uuid OR au.user_id IS NOT NULL);
 
 -- name: CreateAccount :one
-INSERT INTO accounts (name, bank, account_type, alias, anchor_balance, anchor_currency)
-VALUES (@name::text, @bank::text, @account_type::text,
-        sqlc.narg('alias')::text,
-        @anchor_balance::numeric, @anchor_currency::char(3))
-RETURNING id, name, bank, account_type, alias,
+INSERT INTO accounts (
+  owner_id, name, bank, account_type, alias,
+  anchor_balance, anchor_currency
+) VALUES (
+  @owner_id::uuid,
+  @name::text,
+  @bank::text,
+  @account_type::smallint,
+  sqlc.narg('alias')::text,
+  @anchor_balance::numeric,
+  @anchor_currency::char(3)
+)
+RETURNING id, owner_id, name, bank, account_type, alias,
           anchor_date, anchor_balance, anchor_currency,
           created_at, updated_at;
 
--- name: DeleteAccount :execrows
-DELETE FROM accounts WHERE id = @id::bigint;
+-- name: UpdateAccount :one
+UPDATE accounts
+SET name = COALESCE(sqlc.narg('name')::text, name),
+    bank = COALESCE(sqlc.narg('bank')::text, bank),
+    account_type = COALESCE(sqlc.narg('account_type')::smallint, account_type),
+    alias = COALESCE(sqlc.narg('alias')::text, alias),
+    anchor_date = COALESCE(sqlc.narg('anchor_date')::date, anchor_date),
+    anchor_balance = COALESCE(sqlc.narg('anchor_balance')::numeric, anchor_balance),
+    anchor_currency = COALESCE(sqlc.narg('anchor_currency')::char(3), anchor_currency)
+WHERE id = @id::bigint
+RETURNING id, owner_id, name, bank, account_type, alias,
+          anchor_date, anchor_balance, anchor_currency,
+          created_at, updated_at;
+
+-- name: DeleteAccountForUser :execrows
+DELETE FROM accounts 
+WHERE id = @id::bigint AND owner_id = @user_id::uuid;
 
 -- name: SetAccountAnchor :execrows
 UPDATE accounts
-SET anchor_date     = NOW()::date,
-    anchor_balance  = @anchor_balance::numeric,
+SET anchor_date = NOW()::date,
+    anchor_balance = @anchor_balance::numeric,
     anchor_currency = @anchor_currency::char(3)
 WHERE id = @id::bigint;
 
--- name: UpdateAccountPartial :one
-UPDATE accounts
-SET name            = CASE WHEN @name_set::bool            THEN @name::text               ELSE name            END,
-    bank            = CASE WHEN @bank_set::bool            THEN @bank::text               ELSE bank            END,
-    account_type    = CASE WHEN @type_set::bool            THEN @account_type::text       ELSE account_type    END,
-    alias           = CASE WHEN @alias_set::bool           THEN sqlc.narg('alias')::text  ELSE alias           END,
-    anchor_date     = CASE WHEN @anchor_date_set::bool     THEN @anchor_date::date        ELSE anchor_date     END,
-    anchor_balance  = CASE WHEN @anchor_balance_set::bool  THEN @anchor_balance::numeric  ELSE anchor_balance  END,
-    anchor_currency = CASE WHEN @anchor_currency_set::bool THEN @anchor_currency::char(3) ELSE anchor_currency END
-WHERE id = @id::bigint
-RETURNING id, name, bank, account_type, alias,
-          anchor_date, anchor_balance, anchor_currency,
-          created_at, updated_at;
-
 -- name: GetAccountBalance :one
-SELECT balance_after 
-FROM transactions 
-WHERE account_id = @account_id::bigint 
-ORDER BY tx_date DESC, id DESC 
+SELECT balance_after
+FROM transactions
+WHERE account_id = @account_id::bigint
+ORDER BY tx_date DESC, id DESC
 LIMIT 1;
 
 -- name: GetAccountAnchorBalance :one
-SELECT anchor_balance 
-FROM accounts 
+SELECT anchor_balance, anchor_currency
+FROM accounts
 WHERE id = @id::bigint;
+
+-- name: CheckUserAccountAccess :one
+SELECT EXISTS(
+  SELECT 1 FROM accounts a
+  LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = @user_id::uuid
+  WHERE a.id = @account_id::bigint 
+    AND (a.owner_id = @user_id::uuid OR au.user_id IS NOT NULL)
+) AS has_access;
+
+-- name: GetUserAccountsCount :one
+SELECT COUNT(*) AS account_count
+FROM accounts a
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = @user_id::uuid
+WHERE a.owner_id = @user_id::uuid OR au.user_id IS NOT NULL;

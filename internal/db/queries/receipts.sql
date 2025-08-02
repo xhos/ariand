@@ -1,60 +1,30 @@
--- name: ListReceipts :many
-SELECT
-  id,
-  engine,
-  parse_status,
-  link_status,
-  match_ids,
-  merchant,
-  purchase_date,
-  total_amount,
-  currency,
-  tax_amount,
-  raw_payload,
-  canonical_data,
-  image_url,
-  image_sha256,
-  lat,
-  lon,
-  location_source,
-  location_label,
-  created_at,
-  updated_at
-FROM receipts
-ORDER BY created_at DESC;
+-- name: ListReceiptsForUser :many
+SELECT DISTINCT
+  r.id, r.engine, r.parse_status, r.link_status, r.match_ids,
+  r.merchant, r.purchase_date, r.total_amount, r.currency, r.tax_amount,
+  r.raw_payload, r.canonical_data, r.image_url, r.image_sha256,
+  r.lat, r.lon, r.location_source, r.location_label,
+  r.created_at, r.updated_at
+FROM receipts r
+LEFT JOIN transactions t ON r.id = t.receipt_id
+LEFT JOIN accounts a ON t.account_id = a.id
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = @user_id::uuid
+WHERE a.owner_id = @user_id::uuid OR au.user_id IS NOT NULL
+ORDER BY r.created_at DESC;
 
--- name: GetReceipt :one
-SELECT
-  id,
-  engine,             -- text enum: 'gemini' | 'local'
-  parse_status,       -- 'pending' | 'success' | 'failed'
-  link_status,        -- 'unlinked' | 'matched' | 'needs_verification'
-  match_ids,          -- bigint[]
-  merchant,
-  purchase_date,
-  total_amount,
-  currency,
-  tax_amount,
-  raw_payload,
-  canonical_data,
-  image_url,
-  image_sha256,
-  lat,
-  lon,
-  location_source,
-  location_label,
-  created_at,
-  updated_at
-FROM receipts
-WHERE id = @id::bigint;
-
--- name: ListReceiptItemsForReceipt :many
-SELECT
-  id, receipt_id, line_no, name, qty, unit_price, line_total, sku, category_hint,
-  created_at, updated_at
-FROM receipt_items
-WHERE receipt_id = @receipt_id::bigint
-ORDER BY line_no NULLS LAST, id;
+-- name: GetReceiptForUser :one
+SELECT DISTINCT
+  r.id, r.engine, r.parse_status, r.link_status, r.match_ids,
+  r.merchant, r.purchase_date, r.total_amount, r.currency, r.tax_amount,
+  r.raw_payload, r.canonical_data, r.image_url, r.image_sha256,
+  r.lat, r.lon, r.location_source, r.location_label,
+  r.created_at, r.updated_at
+FROM receipts r
+LEFT JOIN transactions t ON r.id = t.receipt_id
+LEFT JOIN accounts a ON t.account_id = a.id
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = @user_id::uuid
+WHERE r.id = @id::bigint
+  AND (a.owner_id = @user_id::uuid OR au.user_id IS NOT NULL);
 
 -- name: CreateReceipt :one
 INSERT INTO receipts (
@@ -63,9 +33,9 @@ INSERT INTO receipts (
   raw_payload, canonical_data, image_url, image_sha256,
   lat, lon, location_source, location_label
 ) VALUES (
-  @engine::text,
-  COALESCE(sqlc.narg('parse_status')::text, 'pending'),
-  COALESCE(sqlc.narg('link_status')::text,  'unlinked'),
+  @engine::smallint,
+  COALESCE(sqlc.narg('parse_status')::smallint, 1),
+  COALESCE(sqlc.narg('link_status')::smallint, 1),
   sqlc.narg('match_ids')::bigint[],
   sqlc.narg('merchant')::text,
   sqlc.narg('purchase_date')::date,
@@ -82,48 +52,115 @@ INSERT INTO receipts (
   sqlc.narg('location_label')::text
 )
 RETURNING
-  id,
-  engine, parse_status, link_status, match_ids,
+  id, engine, parse_status, link_status, match_ids,
   merchant, purchase_date, total_amount, currency, tax_amount,
   raw_payload, canonical_data, image_url, image_sha256,
   lat, lon, location_source, location_label,
   created_at, updated_at;
 
--- name: InsertReceiptItem :exec
+-- name: UpdateReceipt :execrows
+UPDATE receipts
+SET engine = COALESCE(sqlc.narg('engine')::smallint, engine),
+    parse_status = COALESCE(sqlc.narg('parse_status')::smallint, parse_status),
+    link_status = COALESCE(sqlc.narg('link_status')::smallint, link_status),
+    match_ids = COALESCE(sqlc.narg('match_ids')::bigint[], match_ids),
+    merchant = COALESCE(sqlc.narg('merchant')::text, merchant),
+    purchase_date = COALESCE(sqlc.narg('purchase_date')::date, purchase_date),
+    total_amount = COALESCE(sqlc.narg('total_amount')::numeric, total_amount),
+    currency = COALESCE(sqlc.narg('currency')::char(3), currency),
+    tax_amount = COALESCE(sqlc.narg('tax_amount')::numeric, tax_amount),
+    raw_payload = COALESCE(sqlc.narg('raw_payload')::jsonb, raw_payload),
+    canonical_data = COALESCE(sqlc.narg('canonical_data')::jsonb, canonical_data),
+    image_url = COALESCE(sqlc.narg('image_url')::text, image_url),
+    image_sha256 = COALESCE(sqlc.narg('image_sha256')::bytea, image_sha256),
+    lat = COALESCE(sqlc.narg('lat')::double precision, lat),
+    lon = COALESCE(sqlc.narg('lon')::double precision, lon),
+    location_source = COALESCE(sqlc.narg('location_source')::text, location_source),
+    location_label = COALESCE(sqlc.narg('location_label')::text, location_label)
+WHERE id = @id::bigint;
+
+-- name: DeleteReceiptForUser :execrows
+DELETE FROM receipts 
+WHERE id = @id::bigint
+  AND EXISTS (
+    SELECT 1 FROM transactions t
+    JOIN accounts a ON t.account_id = a.id
+    LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = @user_id::uuid
+    WHERE t.receipt_id = receipts.id
+      AND (a.owner_id = @user_id::uuid OR au.user_id IS NOT NULL)
+  );
+
+-- Receipt Items CRUD
+-- name: ListReceiptItemsForReceipt :many
+SELECT
+  id, receipt_id, line_no, name, qty, unit_price, line_total, sku, category_hint,
+  created_at, updated_at
+FROM receipt_items
+WHERE receipt_id = @receipt_id::bigint
+ORDER BY line_no NULLS LAST, id;
+
+-- name: GetReceiptItem :one
+SELECT
+  id, receipt_id, line_no, name, qty, unit_price, line_total, sku, category_hint,
+  created_at, updated_at
+FROM receipt_items
+WHERE id = @id::bigint;
+
+-- name: CreateReceiptItem :one
 INSERT INTO receipt_items (
   receipt_id, line_no, name, qty, unit_price, line_total, sku, category_hint
 ) VALUES (
   @receipt_id::bigint,
   sqlc.narg('line_no')::int,
   @name::text,
-  sqlc.narg('qty')::numeric,
+  COALESCE(sqlc.narg('qty')::numeric, 1),
   sqlc.narg('unit_price')::numeric,
   sqlc.narg('line_total')::numeric,
   sqlc.narg('sku')::text,
   sqlc.narg('category_hint')::text
+)
+RETURNING id, receipt_id, line_no, name, qty, unit_price, line_total, sku, category_hint,
+          created_at, updated_at;
+
+-- name: UpdateReceiptItem :one
+UPDATE receipt_items
+SET line_no = COALESCE(sqlc.narg('line_no')::int, line_no),
+    name = COALESCE(sqlc.narg('name')::text, name),
+    qty = COALESCE(sqlc.narg('qty')::numeric, qty),
+    unit_price = COALESCE(sqlc.narg('unit_price')::numeric, unit_price),
+    line_total = COALESCE(sqlc.narg('line_total')::numeric, line_total),
+    sku = COALESCE(sqlc.narg('sku')::text, sku),
+    category_hint = COALESCE(sqlc.narg('category_hint')::text, category_hint)
+WHERE id = @id::bigint
+RETURNING id, receipt_id, line_no, name, qty, unit_price, line_total, sku, category_hint,
+          created_at, updated_at;
+
+-- name: DeleteReceiptItem :execrows
+DELETE FROM receipt_items WHERE id = @id::bigint;
+
+-- name: BulkCreateReceiptItems :copyfrom
+INSERT INTO receipt_items (
+  receipt_id, line_no, name, qty, unit_price, line_total, sku, category_hint
+) VALUES (
+  @receipt_id, @line_no, @name, @qty, @unit_price, @line_total, @sku, @category_hint
 );
 
--- name: UpdateReceiptPartial :execrows
-UPDATE receipts
-SET
-  engine           = CASE WHEN @engine_set::bool           THEN @engine::text                 ELSE engine           END,
-  parse_status     = CASE WHEN @parse_status_set::bool     THEN @parse_status::text          ELSE parse_status     END,
-  link_status      = CASE WHEN @link_status_set::bool      THEN @link_status::text           ELSE link_status      END,
-  match_ids        = CASE WHEN @match_ids_set::bool        THEN sqlc.narg('match_ids')::bigint[] ELSE match_ids   END,
-  merchant         = CASE WHEN @merchant_set::bool         THEN sqlc.narg('merchant')::text  ELSE merchant         END,
-  purchase_date    = CASE WHEN @purchase_date_set::bool    THEN sqlc.narg('purchase_date')::date ELSE purchase_date END,
-  total_amount     = CASE WHEN @total_amount_set::bool     THEN sqlc.narg('total_amount')::numeric ELSE total_amount END,
-  currency         = CASE WHEN @currency_set::bool         THEN sqlc.narg('currency')::char(3) ELSE currency       END,
-  tax_amount       = CASE WHEN @tax_amount_set::bool       THEN sqlc.narg('tax_amount')::numeric ELSE tax_amount   END,
-  raw_payload      = CASE WHEN @raw_payload_set::bool      THEN sqlc.narg('raw_payload')::jsonb ELSE raw_payload   END,
-  canonical_data   = CASE WHEN @canonical_data_set::bool   THEN sqlc.narg('canonical_data')::jsonb ELSE canonical_data END,
-  image_url        = CASE WHEN @image_url_set::bool        THEN sqlc.narg('image_url')::text ELSE image_url        END,
-  image_sha256     = CASE WHEN @image_sha256_set::bool     THEN sqlc.narg('image_sha256')::bytea ELSE image_sha256 END,
-  lat              = CASE WHEN @lat_set::bool              THEN sqlc.narg('lat')::double precision ELSE lat        END,
-  lon              = CASE WHEN @lon_set::bool              THEN sqlc.narg('lon')::double precision ELSE lon        END,
-  location_source  = CASE WHEN @location_source_set::bool  THEN sqlc.narg('location_source')::text ELSE location_source END,
-  location_label   = CASE WHEN @location_label_set::bool   THEN sqlc.narg('location_label')::text ELSE location_label END
-WHERE id = @id::bigint;
+-- name: DeleteReceiptItemsByReceipt :execrows
+DELETE FROM receipt_items WHERE receipt_id = @receipt_id::bigint;
 
--- name: DeleteReceipt :execrows
-DELETE FROM receipts WHERE id = @id::bigint;
+-- Utility queries
+-- name: GetUnlinkedReceipts :many
+SELECT id, merchant, purchase_date, total_amount, currency, created_at
+FROM receipts
+WHERE link_status = 1  -- unlinked
+ORDER BY created_at DESC
+LIMIT COALESCE(sqlc.narg('limit')::int, 50);
+
+-- name: GetReceiptMatchCandidates :many
+SELECT r.id, r.merchant, r.purchase_date, r.total_amount, r.currency,
+       COUNT(t.id) AS potential_matches
+FROM receipts r
+LEFT JOIN transactions t ON t.id = ANY(r.match_ids)
+WHERE r.link_status = 3  -- needs verification
+GROUP BY r.id, r.merchant, r.purchase_date, r.total_amount, r.currency
+ORDER BY r.created_at DESC;
