@@ -13,9 +13,9 @@ option go_package = "ariand/gen/go/ariand/v1;ariandv1";
 
 service TransactionService {
   rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse);
-  rpc GetTransaction(GetTransactionRequest) returns (Transaction);
+  rpc GetTransaction(GetTransactionRequest) returns (GetTransactionResponse);
   rpc CreateTransaction(CreateTransactionRequest) returns (CreateTransactionResponse);
-  rpc UpdateTransaction(UpdateTransactionRequest) returns (Transaction);
+  rpc UpdateTransaction(UpdateTransactionRequest) returns (UpdateTransactionResponse);
   rpc DeleteTransaction(DeleteTransactionRequest) returns (DeleteTransactionResponse);
   rpc CategorizeTransaction(CategorizeTransactionRequest) returns (CategorizeTransactionResponse);
   rpc IdentifyMerchant(IdentifyMerchantRequest) returns (IdentifyMerchantResponse);
@@ -27,7 +27,7 @@ message ListTransactionsRequest {
   optional google.protobuf.Timestamp start_date = 3;
   optional google.protobuf.Timestamp end_date = 4;
   repeated int64 account_ids = 5;
-  repeated string categories = 6;
+  repeated string category_slugs = 6;
   optional TransactionDirection direction = 7;
   optional string merchant_search = 8;
   optional string description_search = 9;
@@ -45,13 +45,17 @@ message GetTransactionRequest {
   int64 id = 1;
 }
 
+message GetTransactionResponse {
+  Transaction transaction = 1;
+}
+
 message CreateTransactionRequest {
   int64 account_id = 1;
   google.protobuf.Timestamp tx_date = 2;
   google.type.Money tx_amount = 3;
-  TransactionDirection tx_direction = 4;
+  TransactionDirection direction = 4;
   optional string email_id = 5;
-  optional string tx_desc = 6;
+  optional string description = 6;
   optional int64 category_id = 7;
   optional string merchant = 8;
   optional string user_notes = 9;
@@ -66,8 +70,12 @@ message CreateTransactionResponse {
 
 message UpdateTransactionRequest {
   int64 id = 1;
-  Transaction updates = 2;
+  Transaction transaction = 2;
   google.protobuf.FieldMask update_mask = 3;
+}
+
+message UpdateTransactionResponse {
+  Transaction transaction = 1;
 }
 
 message DeleteTransactionRequest {
@@ -80,23 +88,27 @@ message CategorizeTransactionRequest {
   int64 id = 1;
 }
 
-message CategorizeTransactionResponse {}
+message CategorizeTransactionResponse {
+  Transaction transaction = 1;
+}
 
 message IdentifyMerchantRequest {
   int64 id = 1;
 }
 
-message IdentifyMerchantResponse {}
+message IdentifyMerchantResponse {
+  Transaction transaction = 1;
+}
 
 // ----- account service ----------
 
 service AccountService {
   rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse);
-  rpc GetAccount(GetAccountRequest) returns (Account);
-  rpc CreateAccount(CreateAccountRequest) returns (Account);
+  rpc GetAccount(GetAccountRequest) returns (GetAccountResponse);
+  rpc CreateAccount(CreateAccountRequest) returns (CreateAccountResponse);
+  rpc UpdateAccount(UpdateAccountRequest) returns (UpdateAccountResponse);
   rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
-  rpc SetAnchor(SetAnchorRequest) returns (SetAnchorResponse);
-  rpc UpdateAccount(UpdateAccountRequest) returns (Account);
+  rpc SetAccountAnchor(SetAccountAnchorRequest) returns (SetAccountAnchorResponse);
   rpc GetAccountBalance(GetAccountBalanceRequest) returns (GetAccountBalanceResponse);
 }
 
@@ -110,6 +122,10 @@ message GetAccountRequest {
   int64 id = 1;
 }
 
+message GetAccountResponse {
+  Account account = 1;
+}
+
 message CreateAccountRequest {
   string name = 1;
   string bank = 2;
@@ -118,23 +134,33 @@ message CreateAccountRequest {
   google.type.Money anchor_balance = 5;
 }
 
+message CreateAccountResponse {
+  Account account = 1;
+}
+
+message UpdateAccountRequest {
+  int64 id = 1;
+  Account account = 2;
+  google.protobuf.FieldMask update_mask = 3;
+}
+
+message UpdateAccountResponse {
+  Account account = 1;
+}
+
 message DeleteAccountRequest {
   int64 id = 1;
 }
 
 message DeleteAccountResponse {}
 
-message SetAnchorRequest {
+message SetAccountAnchorRequest {
   int64 id = 1;
   google.type.Money balance = 2;
 }
 
-message SetAnchorResponse {}
-
-message UpdateAccountRequest {
-  int64 id = 1;
-  Account updates = 2;
-  google.protobuf.FieldMask update_mask = 3;
+message SetAccountAnchorResponse {
+  Account account = 1;
 }
 
 message GetAccountBalanceRequest {
@@ -149,9 +175,9 @@ message GetAccountBalanceResponse {
 
 service CategoryService {
   rpc ListCategories(ListCategoriesRequest) returns (ListCategoriesResponse);
-  rpc GetCategory(GetCategoryRequest) returns (Category);
+  rpc GetCategory(GetCategoryRequest) returns (GetCategoryResponse);
   rpc CreateCategory(CreateCategoryRequest) returns (CreateCategoryResponse);
-  rpc UpdateCategory(UpdateCategoryRequest) returns (Category);
+  rpc UpdateCategory(UpdateCategoryRequest) returns (UpdateCategoryResponse);
   rpc DeleteCategory(DeleteCategoryRequest) returns (DeleteCategoryResponse);
 }
 
@@ -165,6 +191,10 @@ message GetCategoryRequest {
   int64 id = 1;
 }
 
+message GetCategoryResponse {
+  Category category = 1;
+}
+
 message CreateCategoryRequest {
   string slug = 1;
   string label = 2;
@@ -172,13 +202,17 @@ message CreateCategoryRequest {
 }
 
 message CreateCategoryResponse {
-  int64 id = 1;
+  Category category = 1;
 }
 
 message UpdateCategoryRequest {
   int64 id = 1;
-  Category updates = 2;
+  Category category = 2;
   google.protobuf.FieldMask update_mask = 3;
+}
+
+message UpdateCategoryResponse {
+  Category category = 1;
 }
 
 message DeleteCategoryRequest {
@@ -196,50 +230,62 @@ service DashboardService {
 }
 
 message GetBalanceRequest {}
+
 message GetBalanceResponse {
   google.type.Money balance = 1;
 }
 
 message GetDebtRequest {}
+
 message GetDebtResponse {
   google.type.Money debt = 1;
 }
 
 message GetTrendsRequest {
-  optional google.protobuf.Timestamp start = 1;
-  optional google.protobuf.Timestamp end = 2;
+  optional google.protobuf.Timestamp start_date = 1;
+  optional google.protobuf.Timestamp end_date = 2;
 }
 
 message GetTrendsResponse {
-  repeated TrendPoint trends = 1;
+  repeated TrendPoint trend_points = 1;
 }
 
 // ----- receipt service ----------
 
 service ReceiptService {
-  rpc UploadReceipt(stream UploadReceiptRequest) returns (Receipt);
-  rpc MatchReceipt(stream MatchReceiptRequest) returns (Receipt);
+  rpc UploadReceipt(stream UploadReceiptRequest) returns (UploadReceiptResponse);
+  rpc MatchReceipt(stream MatchReceiptRequest) returns (MatchReceiptResponse);
 }
 
 message UploadReceiptRequest {
   oneof data {
-    Info info = 1;
+    UploadReceiptInfo info = 1;
     bytes chunk = 2;
   }
-  message Info {
-    int64 transaction_id = 1;
-    string filename = 2;
-    ReceiptEngine engine = 3;
-  }
+}
+
+message UploadReceiptInfo {
+  int64 transaction_id = 1;
+  string filename = 2;
+  ReceiptEngine engine = 3;
+}
+
+message UploadReceiptResponse {
+  Receipt receipt = 1;
 }
 
 message MatchReceiptRequest {
   oneof data {
-    Info info = 1;
+    MatchReceiptInfo info = 1;
     bytes chunk = 2;
   }
-  message Info {
-    string filename = 1;
-    ReceiptEngine engine = 2;
-  }
+}
+
+message MatchReceiptInfo {
+  string filename = 1;
+  ReceiptEngine engine = 2;
+}
+
+message MatchReceiptResponse {
+  Receipt receipt = 1;
 }
