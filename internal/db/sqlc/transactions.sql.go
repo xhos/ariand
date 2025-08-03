@@ -64,6 +64,47 @@ func (q *Queries) BulkDeleteTransactionsForUser(ctx context.Context, arg BulkDel
 	return result.RowsAffected(), nil
 }
 
+const categorizeTransactionAtomic = `-- name: CategorizeTransactionAtomic :one
+UPDATE transactions
+SET category_id = $1::bigint,
+    cat_status = $2::smallint,
+    suggestions = $3::text[]
+WHERE id = $4::bigint
+  AND cat_status = 0  -- Only update if still uncategorized
+  AND account_id IN (
+    SELECT a.id FROM accounts a
+    LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $5::uuid
+    WHERE a.owner_id = $5::uuid OR au.user_id IS NOT NULL
+  )
+RETURNING id, cat_status
+`
+
+type CategorizeTransactionAtomicParams struct {
+	CategoryID  *int64    `json:"category_id"`
+	CatStatus   int16     `json:"cat_status"`
+	Suggestions []string  `json:"suggestions"`
+	ID          int64     `json:"id"`
+	UserID      uuid.UUID `json:"user_id"`
+}
+
+type CategorizeTransactionAtomicRow struct {
+	ID        int64                       `json:"id"`
+	CatStatus ariand.CategorizationStatus `json:"cat_status"`
+}
+
+func (q *Queries) CategorizeTransactionAtomic(ctx context.Context, arg CategorizeTransactionAtomicParams) (CategorizeTransactionAtomicRow, error) {
+	row := q.db.QueryRow(ctx, categorizeTransactionAtomic,
+		arg.CategoryID,
+		arg.CatStatus,
+		arg.Suggestions,
+		arg.ID,
+		arg.UserID,
+	)
+	var i CategorizeTransactionAtomicRow
+	err := row.Scan(&i.ID, &i.CatStatus)
+	return i, err
+}
+
 const createTransactionForUser = `-- name: CreateTransactionForUser :one
 INSERT INTO transactions (
   email_id, account_id, tx_date, tx_amount, tx_currency, tx_direction,

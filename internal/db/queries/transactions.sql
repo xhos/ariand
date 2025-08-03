@@ -121,6 +121,20 @@ UPDATE transactions
 SET receipt_id = sqlc.arg(receipt_id)::bigint
 WHERE id = sqlc.arg(id)::bigint AND receipt_id IS NULL;
 
+-- name: CategorizeTransactionAtomic :one
+UPDATE transactions
+SET category_id = sqlc.narg('category_id')::bigint,
+    cat_status = sqlc.arg(cat_status)::smallint,
+    suggestions = sqlc.arg(suggestions)::text[]
+WHERE id = sqlc.arg(id)::bigint
+  AND cat_status = 0  -- Only update if still uncategorized
+  AND account_id IN (
+    SELECT a.id FROM accounts a
+    LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = sqlc.arg(user_id)::uuid
+    WHERE a.owner_id = sqlc.arg(user_id)::uuid OR au.user_id IS NOT NULL
+  )
+RETURNING id, cat_status;
+
 -- name: BulkCategorizeTransactionsForUser :execrows
 UPDATE transactions
 SET category_id = sqlc.arg(category_id)::bigint,
