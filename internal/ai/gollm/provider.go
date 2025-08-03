@@ -2,7 +2,7 @@ package gollm
 
 import (
 	"ariand/internal/ai"
-	"ariand/internal/domain"
+	sqlc "ariand/internal/db/sqlc"
 	"context"
 	"fmt"
 	"os"
@@ -35,7 +35,7 @@ func (p *provider) Name() string { return p.name }
 // CategorizeTransaction fulfils ai.LLMProvider.
 func (p *provider) CategorizeTransaction(
 	ctx context.Context,
-	tx domain.Transaction,
+	tx sqlc.Transaction,
 	allowedCategories []string,
 ) (string, float64, []string, error) {
 

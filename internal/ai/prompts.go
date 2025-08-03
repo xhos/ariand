@@ -1,11 +1,10 @@
 package ai
 
 import (
+	sqlc "ariand/internal/db/sqlc"
 	"encoding/json"
 	"fmt"
 	"strings"
-
-	"ariand/internal/domain"
 )
 
 // BuildCategorizationPrompt constructs a best-practice prompt:
@@ -14,7 +13,7 @@ import (
 //   - Specifies that "suggestions" must be NEW slugs (not in allowedCategories),
 //     to consider adding to the taxonomy.
 //   - Always responds with exactly one JSON object.
-func BuildCategorizationPrompt(tx *domain.Transaction, allowedCategories []string) string {
+func BuildCategorizationPrompt(tx *sqlc.Transaction, allowedCategories []string) string {
 	val := func(s *string) string {
 		if s == nil {
 			return ""
@@ -60,7 +59,7 @@ Now categorize:
 		strings.Join(allowedCategories, ", "),
 		val(tx.Merchant),
 		val(tx.TxDesc),
-		tx.TxAmount, tx.TxCurrency,
+		tx.TxAmount.InexactFloat64(), tx.TxCurrency,
 		tx.TxDate.Format("2006-01-02T15:04:05Z07:00"),
 	)
 }

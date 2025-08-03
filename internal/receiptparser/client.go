@@ -1,7 +1,7 @@
 package receiptparser
 
 import (
-	"ariand/internal/domain"
+	ariandv1 "ariand/gen/go/ariand/v1"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -9,6 +9,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+
 	"time"
 )
 
@@ -30,7 +31,7 @@ type Client interface {
 		ctx context.Context,
 		file io.Reader,
 		filename string,
-		provider domain.ReceiptProvider,
+		provider ariandv1.ReceiptEngine,
 	) (
 		*ParsedReceipt,
 		[]byte, error,
@@ -57,7 +58,7 @@ func (c *parserClient) Parse(
 	ctx context.Context,
 	file io.Reader,
 	filename string,
-	provider domain.ReceiptProvider,
+	provider ariandv1.ReceiptEngine,
 ) (*ParsedReceipt, []byte, error) {
 
 	body := &bytes.Buffer{}

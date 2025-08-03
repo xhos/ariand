@@ -1,9 +1,8 @@
 package ai
 
 import (
+	sqlc "ariand/internal/db/sqlc"
 	"context"
-
-	"ariand/internal/domain"
 )
 
 // LLMProvider defines the minimal, provider-agnostic contract
@@ -21,7 +20,7 @@ type LLMProvider interface {
 	//   – category slug            (e.g. "food.groceries")
 	//   – confidence in [0,1]
 	//   – optional alternative suggestions
-	CategorizeTransaction(ctx context.Context, tx domain.Transaction, allowedCategories []string) (category string, confidence float64, suggestions []string, err error)
+	CategorizeTransaction(ctx context.Context, tx sqlc.Transaction, allowedCategories []string) (category string, confidence float64, suggestions []string, err error)
 
 	// Chat generates the assistant’s next reply given the
 	// complete message history.
