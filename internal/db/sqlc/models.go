@@ -5,89 +5,116 @@
 package sqlcdb
 
 import (
+	"time"
+
 	ariand "ariand/gen/go/ariand/v1"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/shopspring/decimal"
 )
 
 type Account struct {
-	Id             int64              `json:"id"`
+	ID             int64              `json:"id"`
+	OwnerID        uuid.UUID          `json:"owner_id"`
 	Name           string             `json:"name"`
 	Bank           string             `json:"bank"`
-	AccountType    ariand.AccountType `json:"accountType"`
+	AccountType    ariand.AccountType `json:"account_type"`
 	Alias          *string            `json:"alias"`
-	AnchorDate     pgtype.Date        `json:"anchorDate"`
-	AnchorBalance  decimal.Decimal    `json:"anchorBalance"`
-	AnchorCurrency string             `json:"anchorCurrency"`
-	CreatedAt      pgtype.Timestamptz `json:"createdAt"`
-	UpdatedAt      pgtype.Timestamptz `json:"updatedAt"`
+	AnchorDate     pgtype.Date        `json:"anchor_date"`
+	AnchorBalance  decimal.Decimal    `json:"anchor_balance"`
+	AnchorCurrency string             `json:"anchor_currency"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
+}
+
+type AccountUser struct {
+	AccountID int64     `json:"account_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	AddedAt   time.Time `json:"added_at"`
 }
 
 type Category struct {
-	Id        int64              `json:"id"`
-	Slug      string             `json:"slug"`
-	Label     string             `json:"label"`
-	Color     string             `json:"color"`
-	CreatedAt pgtype.Timestamptz `json:"createdAt"`
-	UpdatedAt pgtype.Timestamptz `json:"updatedAt"`
+	ID        int64     `json:"id"`
+	Slug      string    `json:"slug"`
+	Label     string    `json:"label"`
+	Color     string    `json:"color"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type Receipt struct {
-	Id             int64                     `json:"id"`
+	ID             int64                     `json:"id"`
 	Engine         ariand.ReceiptEngine      `json:"engine"`
-	ParseStatus    ariand.ReceiptParseStatus `json:"parseStatus"`
-	LinkStatus     ariand.ReceiptLinkStatus  `json:"linkStatus"`
-	MatchIds       []int64                   `json:"matchIds"`
+	ParseStatus    ariand.ReceiptParseStatus `json:"parse_status"`
+	LinkStatus     ariand.ReceiptLinkStatus  `json:"link_status"`
+	MatchIds       []int64                   `json:"match_ids"`
 	Merchant       *string                   `json:"merchant"`
-	PurchaseDate   pgtype.Date               `json:"purchaseDate"`
-	TotalAmount    *decimal.Decimal          `json:"totalAmount"`
+	PurchaseDate   pgtype.Date               `json:"purchase_date"`
+	TotalAmount    *decimal.Decimal          `json:"total_amount"`
 	Currency       *string                   `json:"currency"`
-	TaxAmount      *decimal.Decimal          `json:"taxAmount"`
-	RawPayload     []byte                    `json:"rawPayload"`
-	CanonicalData  []byte                    `json:"canonicalData"`
-	ImageUrl       *string                   `json:"imageUrl"`
-	ImageSha256    []byte                    `json:"imageSha256"`
+	TaxAmount      *decimal.Decimal          `json:"tax_amount"`
+	RawPayload     []byte                    `json:"raw_payload"`
+	CanonicalData  []byte                    `json:"canonical_data"`
+	ImageUrl       *string                   `json:"image_url"`
+	ImageSha256    []byte                    `json:"image_sha256"`
 	Lat            *float64                  `json:"lat"`
 	Lon            *float64                  `json:"lon"`
-	LocationSource *string                   `json:"locationSource"`
-	LocationLabel  *string                   `json:"locationLabel"`
-	CreatedAt      pgtype.Timestamptz        `json:"createdAt"`
-	UpdatedAt      pgtype.Timestamptz        `json:"updatedAt"`
+	LocationSource *string                   `json:"location_source"`
+	LocationLabel  *string                   `json:"location_label"`
+	CreatedAt      time.Time                 `json:"created_at"`
+	UpdatedAt      time.Time                 `json:"updated_at"`
 }
 
 type ReceiptItem struct {
-	Id           int64              `json:"id"`
-	ReceiptId    int64              `json:"receiptId"`
-	LineNo       *int32             `json:"lineNo"`
-	Name         string             `json:"name"`
-	Qty          *decimal.Decimal   `json:"qty"`
-	UnitPrice    *decimal.Decimal   `json:"unitPrice"`
-	LineTotal    *decimal.Decimal   `json:"lineTotal"`
-	Sku          *string            `json:"sku"`
-	CategoryHint *string            `json:"categoryHint"`
-	CreatedAt    pgtype.Timestamptz `json:"createdAt"`
-	UpdatedAt    pgtype.Timestamptz `json:"updatedAt"`
+	ID           int64            `json:"id"`
+	ReceiptID    int64            `json:"receipt_id"`
+	LineNo       *int32           `json:"line_no"`
+	Name         string           `json:"name"`
+	Qty          *decimal.Decimal `json:"qty"`
+	UnitPrice    *decimal.Decimal `json:"unit_price"`
+	LineTotal    *decimal.Decimal `json:"line_total"`
+	Sku          *string          `json:"sku"`
+	CategoryHint *string          `json:"category_hint"`
+	CreatedAt    time.Time        `json:"created_at"`
+	UpdatedAt    time.Time        `json:"updated_at"`
 }
 
 type Transaction struct {
-	Id              int64                       `json:"id"`
-	AccountId       int64                       `json:"accountId"`
-	EmailId         *string                     `json:"emailId"`
-	TxDate          pgtype.Timestamptz          `json:"txDate"`
-	TxAmount        decimal.Decimal             `json:"txAmount"`
-	TxCurrency      string                      `json:"txCurrency"`
-	TxDirection     ariand.TransactionDirection `json:"txDirection"`
-	TxDesc          *string                     `json:"txDesc"`
-	BalanceAfter    *decimal.Decimal            `json:"balanceAfter"`
+	ID              int64                       `json:"id"`
+	AccountID       int64                       `json:"account_id"`
+	EmailID         *string                     `json:"email_id"`
+	TxDate          time.Time                   `json:"tx_date"`
+	TxAmount        decimal.Decimal             `json:"tx_amount"`
+	TxCurrency      string                      `json:"tx_currency"`
+	TxDirection     ariand.TransactionDirection `json:"tx_direction"`
+	TxDesc          *string                     `json:"tx_desc"`
+	BalanceAfter    *decimal.Decimal            `json:"balance_after"`
 	Merchant        *string                     `json:"merchant"`
-	CategoryId      *int64                      `json:"categoryId"`
-	CatStatus       ariand.CategorizationStatus `json:"catStatus"`
+	CategoryID      *int64                      `json:"category_id"`
+	CatStatus       ariand.CategorizationStatus `json:"cat_status"`
 	Suggestions     []string                    `json:"suggestions"`
-	UserNotes       *string                     `json:"userNotes"`
-	ForeignCurrency *string                     `json:"foreignCurrency"`
-	ForeignAmount   *decimal.Decimal            `json:"foreignAmount"`
-	ExchangeRate    *decimal.Decimal            `json:"exchangeRate"`
-	ReceiptId       *int64                      `json:"receiptId"`
-	CreatedAt       pgtype.Timestamptz          `json:"createdAt"`
-	UpdatedAt       pgtype.Timestamptz          `json:"updatedAt"`
+	UserNotes       *string                     `json:"user_notes"`
+	ForeignCurrency *string                     `json:"foreign_currency"`
+	ForeignAmount   *decimal.Decimal            `json:"foreign_amount"`
+	ExchangeRate    *decimal.Decimal            `json:"exchange_rate"`
+	ReceiptID       *int64                      `json:"receipt_id"`
+	CreatedAt       time.Time                   `json:"created_at"`
+	UpdatedAt       time.Time                   `json:"updated_at"`
+}
+
+type User struct {
+	ID          uuid.UUID `json:"id"`
+	Email       string    `json:"email"`
+	DisplayName *string   `json:"display_name"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type UserCredential struct {
+	ID           uuid.UUID `json:"id"`
+	UserID       uuid.UUID `json:"user_id"`
+	CredentialID []byte    `json:"credential_id"`
+	PublicKey    []byte    `json:"public_key"`
+	SignCount    int64     `json:"sign_count"`
+	CreatedAt    time.Time `json:"created_at"`
 }

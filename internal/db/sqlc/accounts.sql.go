@@ -7,32 +7,66 @@ package sqlcdb
 
 import (
 	"context"
+	"time"
 
+	ariand "ariand/gen/go/ariand/v1"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/shopspring/decimal"
 )
 
+const checkUserAccountAccess = `-- name: CheckUserAccountAccess :one
+SELECT EXISTS(
+  SELECT 1 FROM accounts a
+  LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
+  WHERE a.id = $2::bigint 
+    AND (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
+) AS has_access
+`
+
+type CheckUserAccountAccessParams struct {
+	UserID    uuid.UUID `json:"user_id"`
+	AccountID int64     `json:"account_id"`
+}
+
+func (q *Queries) CheckUserAccountAccess(ctx context.Context, arg CheckUserAccountAccessParams) (bool, error) {
+	row := q.db.QueryRow(ctx, checkUserAccountAccess, arg.UserID, arg.AccountID)
+	var has_access bool
+	err := row.Scan(&has_access)
+	return has_access, err
+}
+
 const createAccount = `-- name: CreateAccount :one
-INSERT INTO accounts (name, bank, account_type, alias, anchor_balance, anchor_currency)
-VALUES ($1::text, $2::text, $3::text,
-        $4::text,
-        $5::numeric, $6::char(3))
-RETURNING id, name, bank, account_type, alias,
+INSERT INTO accounts (
+  owner_id, name, bank, account_type, alias,
+  anchor_balance, anchor_currency
+) VALUES (
+  $1::uuid,
+  $2::text,
+  $3::text,
+  $4::smallint,
+  $5::text,
+  $6::numeric,
+  $7::char(3)
+)
+RETURNING id, owner_id, name, bank, account_type, alias,
           anchor_date, anchor_balance, anchor_currency,
           created_at, updated_at
 `
 
 type CreateAccountParams struct {
+	OwnerID        uuid.UUID       `json:"owner_id"`
 	Name           string          `json:"name"`
 	Bank           string          `json:"bank"`
-	AccountType    string          `json:"accountType"`
+	AccountType    int16           `json:"account_type"`
 	Alias          *string         `json:"alias"`
-	AnchorBalance  decimal.Decimal `json:"anchorBalance"`
-	AnchorCurrency string          `json:"anchorCurrency"`
+	AnchorBalance  decimal.Decimal `json:"anchor_balance"`
+	AnchorCurrency string          `json:"anchor_currency"`
 }
 
 func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error) {
 	row := q.db.QueryRow(ctx, createAccount,
+		arg.OwnerID,
 		arg.Name,
 		arg.Bank,
 		arg.AccountType,
@@ -42,7 +76,8 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (A
 	)
 	var i Account
 	err := row.Scan(
-		&i.Id,
+		&i.ID,
+		&i.OwnerID,
 		&i.Name,
 		&i.Bank,
 		&i.AccountType,
@@ -56,62 +91,47 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (A
 	return i, err
 }
 
-const deleteAccount = `-- name: DeleteAccount :execrows
-DELETE FROM accounts WHERE id = $1::bigint
+const deleteAccountForUser = `-- name: DeleteAccountForUser :execrows
+DELETE FROM accounts 
+WHERE id = $1::bigint AND owner_id = $2::uuid
 `
 
-func (q *Queries) DeleteAccount(ctx context.Context, id int64) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteAccount, id)
+type DeleteAccountForUserParams struct {
+	ID     int64     `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) DeleteAccountForUser(ctx context.Context, arg DeleteAccountForUserParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteAccountForUser, arg.ID, arg.UserID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected(), nil
 }
 
-const getAccount = `-- name: GetAccount :one
-SELECT id, name, bank, account_type, alias,
-       anchor_date, anchor_balance, anchor_currency,
-       created_at, updated_at
+const getAccountAnchorBalance = `-- name: GetAccountAnchorBalance :one
+SELECT anchor_balance, anchor_currency
 FROM accounts
 WHERE id = $1::bigint
 `
 
-func (q *Queries) GetAccount(ctx context.Context, id int64) (Account, error) {
-	row := q.db.QueryRow(ctx, getAccount, id)
-	var i Account
-	err := row.Scan(
-		&i.Id,
-		&i.Name,
-		&i.Bank,
-		&i.AccountType,
-		&i.Alias,
-		&i.AnchorDate,
-		&i.AnchorBalance,
-		&i.AnchorCurrency,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
+type GetAccountAnchorBalanceRow struct {
+	AnchorBalance  decimal.Decimal `json:"anchor_balance"`
+	AnchorCurrency string          `json:"anchor_currency"`
+}
+
+func (q *Queries) GetAccountAnchorBalance(ctx context.Context, id int64) (GetAccountAnchorBalanceRow, error) {
+	row := q.db.QueryRow(ctx, getAccountAnchorBalance, id)
+	var i GetAccountAnchorBalanceRow
+	err := row.Scan(&i.AnchorBalance, &i.AnchorCurrency)
 	return i, err
 }
 
-const getAccountAnchorBalance = `-- name: GetAccountAnchorBalance :one
-SELECT anchor_balance 
-FROM accounts 
-WHERE id = $1::bigint
-`
-
-func (q *Queries) GetAccountAnchorBalance(ctx context.Context, id int64) (decimal.Decimal, error) {
-	row := q.db.QueryRow(ctx, getAccountAnchorBalance, id)
-	var anchor_balance decimal.Decimal
-	err := row.Scan(&anchor_balance)
-	return anchor_balance, err
-}
-
 const getAccountBalance = `-- name: GetAccountBalance :one
-SELECT balance_after 
-FROM transactions 
-WHERE account_id = $1::bigint 
-ORDER BY tx_date DESC, id DESC 
+SELECT balance_after
+FROM transactions
+WHERE account_id = $1::bigint
+ORDER BY tx_date DESC, id DESC
 LIMIT 1
 `
 
@@ -122,25 +142,109 @@ func (q *Queries) GetAccountBalance(ctx context.Context, accountID int64) (*deci
 	return balance_after, err
 }
 
-const listAccounts = `-- name: ListAccounts :many
-SELECT id, name, bank, account_type, alias,
-       anchor_date, anchor_balance, anchor_currency,
-       created_at, updated_at
-FROM accounts
-ORDER BY created_at
+const getAccountForUser = `-- name: GetAccountForUser :one
+SELECT a.id, a.owner_id, a.name, a.bank, a.account_type, a.alias,
+       a.anchor_date, a.anchor_balance, a.anchor_currency,
+       a.created_at, a.updated_at,
+       (a.owner_id = $1::uuid) AS is_owner
+FROM accounts a
+LEFT JOIN account_users au ON au.account_id = a.id AND au.user_id = $1::uuid
+WHERE a.id = $2::bigint
+  AND (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
 `
 
-func (q *Queries) ListAccounts(ctx context.Context) ([]Account, error) {
-	rows, err := q.db.Query(ctx, listAccounts)
+type GetAccountForUserParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	ID     int64     `json:"id"`
+}
+
+type GetAccountForUserRow struct {
+	ID             int64              `json:"id"`
+	OwnerID        uuid.UUID          `json:"owner_id"`
+	Name           string             `json:"name"`
+	Bank           string             `json:"bank"`
+	AccountType    ariand.AccountType `json:"account_type"`
+	Alias          *string            `json:"alias"`
+	AnchorDate     pgtype.Date        `json:"anchor_date"`
+	AnchorBalance  decimal.Decimal    `json:"anchor_balance"`
+	AnchorCurrency string             `json:"anchor_currency"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
+	IsOwner        bool               `json:"is_owner"`
+}
+
+func (q *Queries) GetAccountForUser(ctx context.Context, arg GetAccountForUserParams) (GetAccountForUserRow, error) {
+	row := q.db.QueryRow(ctx, getAccountForUser, arg.UserID, arg.ID)
+	var i GetAccountForUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerID,
+		&i.Name,
+		&i.Bank,
+		&i.AccountType,
+		&i.Alias,
+		&i.AnchorDate,
+		&i.AnchorBalance,
+		&i.AnchorCurrency,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.IsOwner,
+	)
+	return i, err
+}
+
+const getUserAccountsCount = `-- name: GetUserAccountsCount :one
+SELECT COUNT(*) AS account_count
+FROM accounts a
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
+WHERE a.owner_id = $1::uuid OR au.user_id IS NOT NULL
+`
+
+func (q *Queries) GetUserAccountsCount(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, getUserAccountsCount, userID)
+	var account_count int64
+	err := row.Scan(&account_count)
+	return account_count, err
+}
+
+const listAccountsForUser = `-- name: ListAccountsForUser :many
+SELECT a.id, a.owner_id, a.name, a.bank, a.account_type, a.alias,
+       a.anchor_date, a.anchor_balance, a.anchor_currency,
+       a.created_at, a.updated_at,
+       (a.owner_id = $1::uuid) AS is_owner
+FROM accounts a
+LEFT JOIN account_users au ON au.account_id = a.id AND au.user_id = $1::uuid
+WHERE a.owner_id = $1::uuid OR au.user_id IS NOT NULL
+ORDER BY is_owner DESC, a.created_at
+`
+
+type ListAccountsForUserRow struct {
+	ID             int64              `json:"id"`
+	OwnerID        uuid.UUID          `json:"owner_id"`
+	Name           string             `json:"name"`
+	Bank           string             `json:"bank"`
+	AccountType    ariand.AccountType `json:"account_type"`
+	Alias          *string            `json:"alias"`
+	AnchorDate     pgtype.Date        `json:"anchor_date"`
+	AnchorBalance  decimal.Decimal    `json:"anchor_balance"`
+	AnchorCurrency string             `json:"anchor_currency"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
+	IsOwner        bool               `json:"is_owner"`
+}
+
+func (q *Queries) ListAccountsForUser(ctx context.Context, userID uuid.UUID) ([]ListAccountsForUserRow, error) {
+	rows, err := q.db.Query(ctx, listAccountsForUser, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Account
+	var items []ListAccountsForUserRow
 	for rows.Next() {
-		var i Account
+		var i ListAccountsForUserRow
 		if err := rows.Scan(
-			&i.Id,
+			&i.ID,
+			&i.OwnerID,
 			&i.Name,
 			&i.Bank,
 			&i.AccountType,
@@ -150,6 +254,7 @@ func (q *Queries) ListAccounts(ctx context.Context) ([]Account, error) {
 			&i.AnchorCurrency,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.IsOwner,
 		); err != nil {
 			return nil, err
 		}
@@ -163,80 +268,67 @@ func (q *Queries) ListAccounts(ctx context.Context) ([]Account, error) {
 
 const setAccountAnchor = `-- name: SetAccountAnchor :execrows
 UPDATE accounts
-SET anchor_date     = NOW()::date,
-    anchor_balance  = $1::numeric,
+SET anchor_date = NOW()::date,
+    anchor_balance = $1::numeric,
     anchor_currency = $2::char(3)
 WHERE id = $3::bigint
 `
 
 type SetAccountAnchorParams struct {
-	AnchorBalance  decimal.Decimal `json:"anchorBalance"`
-	AnchorCurrency string          `json:"anchorCurrency"`
-	Id             int64           `json:"id"`
+	AnchorBalance  decimal.Decimal `json:"anchor_balance"`
+	AnchorCurrency string          `json:"anchor_currency"`
+	ID             int64           `json:"id"`
 }
 
 func (q *Queries) SetAccountAnchor(ctx context.Context, arg SetAccountAnchorParams) (int64, error) {
-	result, err := q.db.Exec(ctx, setAccountAnchor, arg.AnchorBalance, arg.AnchorCurrency, arg.Id)
+	result, err := q.db.Exec(ctx, setAccountAnchor, arg.AnchorBalance, arg.AnchorCurrency, arg.ID)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected(), nil
 }
 
-const updateAccountPartial = `-- name: UpdateAccountPartial :one
+const updateAccount = `-- name: UpdateAccount :one
 UPDATE accounts
-SET name            = CASE WHEN $1::bool            THEN $2::text               ELSE name            END,
-    bank            = CASE WHEN $3::bool            THEN $4::text               ELSE bank            END,
-    account_type    = CASE WHEN $5::bool            THEN $6::text       ELSE account_type    END,
-    alias           = CASE WHEN $7::bool           THEN $8::text  ELSE alias           END,
-    anchor_date     = CASE WHEN $9::bool     THEN $10::date        ELSE anchor_date     END,
-    anchor_balance  = CASE WHEN $11::bool  THEN $12::numeric  ELSE anchor_balance  END,
-    anchor_currency = CASE WHEN $13::bool THEN $14::char(3) ELSE anchor_currency END
-WHERE id = $15::bigint
-RETURNING id, name, bank, account_type, alias,
+SET name = COALESCE($1::text, name),
+    bank = COALESCE($2::text, bank),
+    account_type = COALESCE($3::smallint, account_type),
+    alias = COALESCE($4::text, alias),
+    anchor_date = COALESCE($5::date, anchor_date),
+    anchor_balance = COALESCE($6::numeric, anchor_balance),
+    anchor_currency = COALESCE($7::char(3), anchor_currency)
+WHERE id = $8::bigint
+RETURNING id, owner_id, name, bank, account_type, alias,
           anchor_date, anchor_balance, anchor_currency,
           created_at, updated_at
 `
 
-type UpdateAccountPartialParams struct {
-	NameSet           bool            `json:"nameSet"`
-	Name              string          `json:"name"`
-	BankSet           bool            `json:"bankSet"`
-	Bank              string          `json:"bank"`
-	TypeSet           bool            `json:"typeSet"`
-	AccountType       string          `json:"accountType"`
-	AliasSet          bool            `json:"aliasSet"`
-	Alias             *string         `json:"alias"`
-	AnchorDateSet     bool            `json:"anchorDateSet"`
-	AnchorDate        pgtype.Date     `json:"anchorDate"`
-	AnchorBalanceSet  bool            `json:"anchorBalanceSet"`
-	AnchorBalance     decimal.Decimal `json:"anchorBalance"`
-	AnchorCurrencySet bool            `json:"anchorCurrencySet"`
-	AnchorCurrency    string          `json:"anchorCurrency"`
-	Id                int64           `json:"id"`
+type UpdateAccountParams struct {
+	Name           *string          `json:"name"`
+	Bank           *string          `json:"bank"`
+	AccountType    *int16           `json:"account_type"`
+	Alias          *string          `json:"alias"`
+	AnchorDate     pgtype.Date      `json:"anchor_date"`
+	AnchorBalance  *decimal.Decimal `json:"anchor_balance"`
+	AnchorCurrency *string          `json:"anchor_currency"`
+	ID             int64            `json:"id"`
 }
 
-func (q *Queries) UpdateAccountPartial(ctx context.Context, arg UpdateAccountPartialParams) (Account, error) {
-	row := q.db.QueryRow(ctx, updateAccountPartial,
-		arg.NameSet,
+func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (Account, error) {
+	row := q.db.QueryRow(ctx, updateAccount,
 		arg.Name,
-		arg.BankSet,
 		arg.Bank,
-		arg.TypeSet,
 		arg.AccountType,
-		arg.AliasSet,
 		arg.Alias,
-		arg.AnchorDateSet,
 		arg.AnchorDate,
-		arg.AnchorBalanceSet,
 		arg.AnchorBalance,
-		arg.AnchorCurrencySet,
 		arg.AnchorCurrency,
-		arg.Id,
+		arg.ID,
 	)
 	var i Account
 	err := row.Scan(
-		&i.Id,
+		&i.ID,
+		&i.OwnerID,
 		&i.Name,
 		&i.Bank,
 		&i.AccountType,

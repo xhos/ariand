@@ -7,10 +7,23 @@ package sqlcdb
 
 import (
 	"context"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/shopspring/decimal"
 )
+
+type BulkCreateReceiptItemsParams struct {
+	ReceiptID    int64            `json:"receipt_id"`
+	LineNo       *int32           `json:"line_no"`
+	Name         string           `json:"name"`
+	Qty          *decimal.Decimal `json:"qty"`
+	UnitPrice    *decimal.Decimal `json:"unit_price"`
+	LineTotal    *decimal.Decimal `json:"line_total"`
+	Sku          *string          `json:"sku"`
+	CategoryHint *string          `json:"category_hint"`
+}
 
 const createReceipt = `-- name: CreateReceipt :one
 INSERT INTO receipts (
@@ -19,9 +32,9 @@ INSERT INTO receipts (
   raw_payload, canonical_data, image_url, image_sha256,
   lat, lon, location_source, location_label
 ) VALUES (
-  $1::text,
-  COALESCE($2::text, 'pending'),
-  COALESCE($3::text,  'unlinked'),
+  $1::smallint,
+  COALESCE($2::smallint, 1),
+  COALESCE($3::smallint, 1),
   $4::bigint[],
   $5::text,
   $6::date,
@@ -38,8 +51,7 @@ INSERT INTO receipts (
   $17::text
 )
 RETURNING
-  id,
-  engine, parse_status, link_status, match_ids,
+  id, engine, parse_status, link_status, match_ids,
   merchant, purchase_date, total_amount, currency, tax_amount,
   raw_payload, canonical_data, image_url, image_sha256,
   lat, lon, location_source, location_label,
@@ -47,23 +59,23 @@ RETURNING
 `
 
 type CreateReceiptParams struct {
-	Engine         string           `json:"engine"`
-	ParseStatus    *string          `json:"parseStatus"`
-	LinkStatus     *string          `json:"linkStatus"`
-	MatchIds       []int64          `json:"matchIds"`
+	Engine         int16            `json:"engine"`
+	ParseStatus    *int16           `json:"parse_status"`
+	LinkStatus     *int16           `json:"link_status"`
+	MatchIds       []int64          `json:"match_ids"`
 	Merchant       *string          `json:"merchant"`
-	PurchaseDate   pgtype.Date      `json:"purchaseDate"`
-	TotalAmount    *decimal.Decimal `json:"totalAmount"`
+	PurchaseDate   pgtype.Date      `json:"purchase_date"`
+	TotalAmount    *decimal.Decimal `json:"total_amount"`
 	Currency       *string          `json:"currency"`
-	TaxAmount      *decimal.Decimal `json:"taxAmount"`
-	RawPayload     []byte           `json:"rawPayload"`
-	CanonicalData  []byte           `json:"canonicalData"`
-	ImageUrl       *string          `json:"imageUrl"`
-	ImageSha256    []byte           `json:"imageSha256"`
+	TaxAmount      *decimal.Decimal `json:"tax_amount"`
+	RawPayload     []byte           `json:"raw_payload"`
+	CanonicalData  []byte           `json:"canonical_data"`
+	ImageUrl       *string          `json:"image_url"`
+	ImageSha256    []byte           `json:"image_sha256"`
 	Lat            *float64         `json:"lat"`
 	Lon            *float64         `json:"lon"`
-	LocationSource *string          `json:"locationSource"`
-	LocationLabel  *string          `json:"locationLabel"`
+	LocationSource *string          `json:"location_source"`
+	LocationLabel  *string          `json:"location_label"`
 }
 
 func (q *Queries) CreateReceipt(ctx context.Context, arg CreateReceiptParams) (Receipt, error) {
@@ -88,7 +100,7 @@ func (q *Queries) CreateReceipt(ctx context.Context, arg CreateReceiptParams) (R
 	)
 	var i Receipt
 	err := row.Scan(
-		&i.Id,
+		&i.ID,
 		&i.Engine,
 		&i.ParseStatus,
 		&i.LinkStatus,
@@ -112,101 +124,37 @@ func (q *Queries) CreateReceipt(ctx context.Context, arg CreateReceiptParams) (R
 	return i, err
 }
 
-const deleteReceipt = `-- name: DeleteReceipt :execrows
-DELETE FROM receipts WHERE id = $1::bigint
-`
-
-func (q *Queries) DeleteReceipt(ctx context.Context, id int64) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteReceipt, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const getReceipt = `-- name: GetReceipt :one
-SELECT
-  id,
-  engine,             -- text enum: 'gemini' | 'local'
-  parse_status,       -- 'pending' | 'success' | 'failed'
-  link_status,        -- 'unlinked' | 'matched' | 'needs_verification'
-  match_ids,          -- bigint[]
-  merchant,
-  purchase_date,
-  total_amount,
-  currency,
-  tax_amount,
-  raw_payload,
-  canonical_data,
-  image_url,
-  image_sha256,
-  lat,
-  lon,
-  location_source,
-  location_label,
-  created_at,
-  updated_at
-FROM receipts
-WHERE id = $1::bigint
-`
-
-func (q *Queries) GetReceipt(ctx context.Context, id int64) (Receipt, error) {
-	row := q.db.QueryRow(ctx, getReceipt, id)
-	var i Receipt
-	err := row.Scan(
-		&i.Id,
-		&i.Engine,
-		&i.ParseStatus,
-		&i.LinkStatus,
-		&i.MatchIds,
-		&i.Merchant,
-		&i.PurchaseDate,
-		&i.TotalAmount,
-		&i.Currency,
-		&i.TaxAmount,
-		&i.RawPayload,
-		&i.CanonicalData,
-		&i.ImageUrl,
-		&i.ImageSha256,
-		&i.Lat,
-		&i.Lon,
-		&i.LocationSource,
-		&i.LocationLabel,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const insertReceiptItem = `-- name: InsertReceiptItem :exec
+const createReceiptItem = `-- name: CreateReceiptItem :one
 INSERT INTO receipt_items (
   receipt_id, line_no, name, qty, unit_price, line_total, sku, category_hint
 ) VALUES (
   $1::bigint,
   $2::int,
   $3::text,
-  $4::numeric,
+  COALESCE($4::numeric, 1),
   $5::numeric,
   $6::numeric,
   $7::text,
   $8::text
 )
+RETURNING id, receipt_id, line_no, name, qty, unit_price, line_total, sku, category_hint,
+          created_at, updated_at
 `
 
-type InsertReceiptItemParams struct {
-	ReceiptId    int64            `json:"receiptId"`
-	LineNo       *int32           `json:"lineNo"`
+type CreateReceiptItemParams struct {
+	ReceiptID    int64            `json:"receipt_id"`
+	LineNo       *int32           `json:"line_no"`
 	Name         string           `json:"name"`
 	Qty          *decimal.Decimal `json:"qty"`
-	UnitPrice    *decimal.Decimal `json:"unitPrice"`
-	LineTotal    *decimal.Decimal `json:"lineTotal"`
+	UnitPrice    *decimal.Decimal `json:"unit_price"`
+	LineTotal    *decimal.Decimal `json:"line_total"`
 	Sku          *string          `json:"sku"`
-	CategoryHint *string          `json:"categoryHint"`
+	CategoryHint *string          `json:"category_hint"`
 }
 
-func (q *Queries) InsertReceiptItem(ctx context.Context, arg InsertReceiptItemParams) error {
-	_, err := q.db.Exec(ctx, insertReceiptItem,
-		arg.ReceiptId,
+func (q *Queries) CreateReceiptItem(ctx context.Context, arg CreateReceiptItemParams) (ReceiptItem, error) {
+	row := q.db.QueryRow(ctx, createReceiptItem,
+		arg.ReceiptID,
 		arg.LineNo,
 		arg.Name,
 		arg.Qty,
@@ -215,7 +163,236 @@ func (q *Queries) InsertReceiptItem(ctx context.Context, arg InsertReceiptItemPa
 		arg.Sku,
 		arg.CategoryHint,
 	)
-	return err
+	var i ReceiptItem
+	err := row.Scan(
+		&i.ID,
+		&i.ReceiptID,
+		&i.LineNo,
+		&i.Name,
+		&i.Qty,
+		&i.UnitPrice,
+		&i.LineTotal,
+		&i.Sku,
+		&i.CategoryHint,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteReceiptForUser = `-- name: DeleteReceiptForUser :execrows
+DELETE FROM receipts 
+WHERE id = $1::bigint
+  AND EXISTS (
+    SELECT 1 FROM transactions t
+    JOIN accounts a ON t.account_id = a.id
+    LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $2::uuid
+    WHERE t.receipt_id = receipts.id
+      AND (a.owner_id = $2::uuid OR au.user_id IS NOT NULL)
+  )
+`
+
+type DeleteReceiptForUserParams struct {
+	ID     int64     `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) DeleteReceiptForUser(ctx context.Context, arg DeleteReceiptForUserParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteReceiptForUser, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteReceiptItem = `-- name: DeleteReceiptItem :execrows
+DELETE FROM receipt_items WHERE id = $1::bigint
+`
+
+func (q *Queries) DeleteReceiptItem(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteReceiptItem, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteReceiptItemsByReceipt = `-- name: DeleteReceiptItemsByReceipt :execrows
+DELETE FROM receipt_items WHERE receipt_id = $1::bigint
+`
+
+func (q *Queries) DeleteReceiptItemsByReceipt(ctx context.Context, receiptID int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteReceiptItemsByReceipt, receiptID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const getReceiptForUser = `-- name: GetReceiptForUser :one
+SELECT DISTINCT
+  r.id, r.engine, r.parse_status, r.link_status, r.match_ids,
+  r.merchant, r.purchase_date, r.total_amount, r.currency, r.tax_amount,
+  r.raw_payload, r.canonical_data, r.image_url, r.image_sha256,
+  r.lat, r.lon, r.location_source, r.location_label,
+  r.created_at, r.updated_at
+FROM receipts r
+LEFT JOIN transactions t ON r.id = t.receipt_id
+LEFT JOIN accounts a ON t.account_id = a.id
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
+WHERE r.id = $2::bigint
+  AND (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
+`
+
+type GetReceiptForUserParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	ID     int64     `json:"id"`
+}
+
+func (q *Queries) GetReceiptForUser(ctx context.Context, arg GetReceiptForUserParams) (Receipt, error) {
+	row := q.db.QueryRow(ctx, getReceiptForUser, arg.UserID, arg.ID)
+	var i Receipt
+	err := row.Scan(
+		&i.ID,
+		&i.Engine,
+		&i.ParseStatus,
+		&i.LinkStatus,
+		&i.MatchIds,
+		&i.Merchant,
+		&i.PurchaseDate,
+		&i.TotalAmount,
+		&i.Currency,
+		&i.TaxAmount,
+		&i.RawPayload,
+		&i.CanonicalData,
+		&i.ImageUrl,
+		&i.ImageSha256,
+		&i.Lat,
+		&i.Lon,
+		&i.LocationSource,
+		&i.LocationLabel,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getReceiptItem = `-- name: GetReceiptItem :one
+SELECT
+  id, receipt_id, line_no, name, qty, unit_price, line_total, sku, category_hint,
+  created_at, updated_at
+FROM receipt_items
+WHERE id = $1::bigint
+`
+
+func (q *Queries) GetReceiptItem(ctx context.Context, id int64) (ReceiptItem, error) {
+	row := q.db.QueryRow(ctx, getReceiptItem, id)
+	var i ReceiptItem
+	err := row.Scan(
+		&i.ID,
+		&i.ReceiptID,
+		&i.LineNo,
+		&i.Name,
+		&i.Qty,
+		&i.UnitPrice,
+		&i.LineTotal,
+		&i.Sku,
+		&i.CategoryHint,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getReceiptMatchCandidates = `-- name: GetReceiptMatchCandidates :many
+SELECT r.id, r.merchant, r.purchase_date, r.total_amount, r.currency,
+       COUNT(t.id) AS potential_matches
+FROM receipts r
+LEFT JOIN transactions t ON t.id = ANY(r.match_ids)
+WHERE r.link_status = 3  -- needs verification
+GROUP BY r.id, r.merchant, r.purchase_date, r.total_amount, r.currency
+ORDER BY r.created_at DESC
+`
+
+type GetReceiptMatchCandidatesRow struct {
+	ID               int64            `json:"id"`
+	Merchant         *string          `json:"merchant"`
+	PurchaseDate     pgtype.Date      `json:"purchase_date"`
+	TotalAmount      *decimal.Decimal `json:"total_amount"`
+	Currency         *string          `json:"currency"`
+	PotentialMatches int64            `json:"potential_matches"`
+}
+
+func (q *Queries) GetReceiptMatchCandidates(ctx context.Context) ([]GetReceiptMatchCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, getReceiptMatchCandidates)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetReceiptMatchCandidatesRow
+	for rows.Next() {
+		var i GetReceiptMatchCandidatesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Merchant,
+			&i.PurchaseDate,
+			&i.TotalAmount,
+			&i.Currency,
+			&i.PotentialMatches,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUnlinkedReceipts = `-- name: GetUnlinkedReceipts :many
+SELECT id, merchant, purchase_date, total_amount, currency, created_at
+FROM receipts
+WHERE link_status = 1  -- unlinked
+ORDER BY created_at DESC
+LIMIT COALESCE($1::int, 50)
+`
+
+type GetUnlinkedReceiptsRow struct {
+	ID           int64            `json:"id"`
+	Merchant     *string          `json:"merchant"`
+	PurchaseDate pgtype.Date      `json:"purchase_date"`
+	TotalAmount  *decimal.Decimal `json:"total_amount"`
+	Currency     *string          `json:"currency"`
+	CreatedAt    time.Time        `json:"created_at"`
+}
+
+// Utility queries
+func (q *Queries) GetUnlinkedReceipts(ctx context.Context, limit *int32) ([]GetUnlinkedReceiptsRow, error) {
+	rows, err := q.db.Query(ctx, getUnlinkedReceipts, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUnlinkedReceiptsRow
+	for rows.Next() {
+		var i GetUnlinkedReceiptsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Merchant,
+			&i.PurchaseDate,
+			&i.TotalAmount,
+			&i.Currency,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listReceiptItemsForReceipt = `-- name: ListReceiptItemsForReceipt :many
@@ -227,6 +404,7 @@ WHERE receipt_id = $1::bigint
 ORDER BY line_no NULLS LAST, id
 `
 
+// Receipt Items CRUD
 func (q *Queries) ListReceiptItemsForReceipt(ctx context.Context, receiptID int64) ([]ReceiptItem, error) {
 	rows, err := q.db.Query(ctx, listReceiptItemsForReceipt, receiptID)
 	if err != nil {
@@ -237,8 +415,8 @@ func (q *Queries) ListReceiptItemsForReceipt(ctx context.Context, receiptID int6
 	for rows.Next() {
 		var i ReceiptItem
 		if err := rows.Scan(
-			&i.Id,
-			&i.ReceiptId,
+			&i.ID,
+			&i.ReceiptID,
 			&i.LineNo,
 			&i.Name,
 			&i.Qty,
@@ -259,34 +437,23 @@ func (q *Queries) ListReceiptItemsForReceipt(ctx context.Context, receiptID int6
 	return items, nil
 }
 
-const listReceipts = `-- name: ListReceipts :many
-SELECT
-  id,
-  engine,
-  parse_status,
-  link_status,
-  match_ids,
-  merchant,
-  purchase_date,
-  total_amount,
-  currency,
-  tax_amount,
-  raw_payload,
-  canonical_data,
-  image_url,
-  image_sha256,
-  lat,
-  lon,
-  location_source,
-  location_label,
-  created_at,
-  updated_at
-FROM receipts
-ORDER BY created_at DESC
+const listReceiptsForUser = `-- name: ListReceiptsForUser :many
+SELECT DISTINCT
+  r.id, r.engine, r.parse_status, r.link_status, r.match_ids,
+  r.merchant, r.purchase_date, r.total_amount, r.currency, r.tax_amount,
+  r.raw_payload, r.canonical_data, r.image_url, r.image_sha256,
+  r.lat, r.lon, r.location_source, r.location_label,
+  r.created_at, r.updated_at
+FROM receipts r
+LEFT JOIN transactions t ON r.id = t.receipt_id
+LEFT JOIN accounts a ON t.account_id = a.id
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
+WHERE a.owner_id = $1::uuid OR au.user_id IS NOT NULL
+ORDER BY r.created_at DESC
 `
 
-func (q *Queries) ListReceipts(ctx context.Context) ([]Receipt, error) {
-	rows, err := q.db.Query(ctx, listReceipts)
+func (q *Queries) ListReceiptsForUser(ctx context.Context, userID uuid.UUID) ([]Receipt, error) {
+	rows, err := q.db.Query(ctx, listReceiptsForUser, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +462,7 @@ func (q *Queries) ListReceipts(ctx context.Context) ([]Receipt, error) {
 	for rows.Next() {
 		var i Receipt
 		if err := rows.Scan(
-			&i.Id,
+			&i.ID,
 			&i.Engine,
 			&i.ParseStatus,
 			&i.LinkStatus,
@@ -326,107 +493,125 @@ func (q *Queries) ListReceipts(ctx context.Context) ([]Receipt, error) {
 	return items, nil
 }
 
-const updateReceiptPartial = `-- name: UpdateReceiptPartial :execrows
+const updateReceipt = `-- name: UpdateReceipt :execrows
 UPDATE receipts
-SET
-  engine           = CASE WHEN $1::bool           THEN $2::text                 ELSE engine           END,
-  parse_status     = CASE WHEN $3::bool     THEN $4::text          ELSE parse_status     END,
-  link_status      = CASE WHEN $5::bool      THEN $6::text           ELSE link_status      END,
-  match_ids        = CASE WHEN $7::bool        THEN $8::bigint[] ELSE match_ids   END,
-  merchant         = CASE WHEN $9::bool         THEN $10::text  ELSE merchant         END,
-  purchase_date    = CASE WHEN $11::bool    THEN $12::date ELSE purchase_date END,
-  total_amount     = CASE WHEN $13::bool     THEN $14::numeric ELSE total_amount END,
-  currency         = CASE WHEN $15::bool         THEN $16::char(3) ELSE currency       END,
-  tax_amount       = CASE WHEN $17::bool       THEN $18::numeric ELSE tax_amount   END,
-  raw_payload      = CASE WHEN $19::bool      THEN $20::jsonb ELSE raw_payload   END,
-  canonical_data   = CASE WHEN $21::bool   THEN $22::jsonb ELSE canonical_data END,
-  image_url        = CASE WHEN $23::bool        THEN $24::text ELSE image_url        END,
-  image_sha256     = CASE WHEN $25::bool     THEN $26::bytea ELSE image_sha256 END,
-  lat              = CASE WHEN $27::bool              THEN $28::double precision ELSE lat        END,
-  lon              = CASE WHEN $29::bool              THEN $30::double precision ELSE lon        END,
-  location_source  = CASE WHEN $31::bool  THEN $32::text ELSE location_source END,
-  location_label   = CASE WHEN $33::bool   THEN $34::text ELSE location_label END
-WHERE id = $35::bigint
+SET engine = COALESCE($1::smallint, engine),
+    parse_status = COALESCE($2::smallint, parse_status),
+    link_status = COALESCE($3::smallint, link_status),
+    match_ids = COALESCE($4::bigint[], match_ids),
+    merchant = COALESCE($5::text, merchant),
+    purchase_date = COALESCE($6::date, purchase_date),
+    total_amount = COALESCE($7::numeric, total_amount),
+    currency = COALESCE($8::char(3), currency),
+    tax_amount = COALESCE($9::numeric, tax_amount),
+    raw_payload = COALESCE($10::jsonb, raw_payload),
+    canonical_data = COALESCE($11::jsonb, canonical_data),
+    image_url = COALESCE($12::text, image_url),
+    image_sha256 = COALESCE($13::bytea, image_sha256),
+    lat = COALESCE($14::double precision, lat),
+    lon = COALESCE($15::double precision, lon),
+    location_source = COALESCE($16::text, location_source),
+    location_label = COALESCE($17::text, location_label)
+WHERE id = $18::bigint
 `
 
-type UpdateReceiptPartialParams struct {
-	EngineSet         bool             `json:"engineSet"`
-	Engine            string           `json:"engine"`
-	ParseStatusSet    bool             `json:"parseStatusSet"`
-	ParseStatus       string           `json:"parseStatus"`
-	LinkStatusSet     bool             `json:"linkStatusSet"`
-	LinkStatus        string           `json:"linkStatus"`
-	MatchIdsSet       bool             `json:"matchIdsSet"`
-	MatchIds          []int64          `json:"matchIds"`
-	MerchantSet       bool             `json:"merchantSet"`
-	Merchant          *string          `json:"merchant"`
-	PurchaseDateSet   bool             `json:"purchaseDateSet"`
-	PurchaseDate      pgtype.Date      `json:"purchaseDate"`
-	TotalAmountSet    bool             `json:"totalAmountSet"`
-	TotalAmount       *decimal.Decimal `json:"totalAmount"`
-	CurrencySet       bool             `json:"currencySet"`
-	Currency          *string          `json:"currency"`
-	TaxAmountSet      bool             `json:"taxAmountSet"`
-	TaxAmount         *decimal.Decimal `json:"taxAmount"`
-	RawPayloadSet     bool             `json:"rawPayloadSet"`
-	RawPayload        []byte           `json:"rawPayload"`
-	CanonicalDataSet  bool             `json:"canonicalDataSet"`
-	CanonicalData     []byte           `json:"canonicalData"`
-	ImageUrlSet       bool             `json:"imageUrlSet"`
-	ImageUrl          *string          `json:"imageUrl"`
-	ImageSha256Set    bool             `json:"imageSha256Set"`
-	ImageSha256       []byte           `json:"imageSha256"`
-	LatSet            bool             `json:"latSet"`
-	Lat               *float64         `json:"lat"`
-	LonSet            bool             `json:"lonSet"`
-	Lon               *float64         `json:"lon"`
-	LocationSourceSet bool             `json:"locationSourceSet"`
-	LocationSource    *string          `json:"locationSource"`
-	LocationLabelSet  bool             `json:"locationLabelSet"`
-	LocationLabel     *string          `json:"locationLabel"`
-	Id                int64            `json:"id"`
+type UpdateReceiptParams struct {
+	Engine         *int16           `json:"engine"`
+	ParseStatus    *int16           `json:"parse_status"`
+	LinkStatus     *int16           `json:"link_status"`
+	MatchIds       []int64          `json:"match_ids"`
+	Merchant       *string          `json:"merchant"`
+	PurchaseDate   pgtype.Date      `json:"purchase_date"`
+	TotalAmount    *decimal.Decimal `json:"total_amount"`
+	Currency       *string          `json:"currency"`
+	TaxAmount      *decimal.Decimal `json:"tax_amount"`
+	RawPayload     []byte           `json:"raw_payload"`
+	CanonicalData  []byte           `json:"canonical_data"`
+	ImageUrl       *string          `json:"image_url"`
+	ImageSha256    []byte           `json:"image_sha256"`
+	Lat            *float64         `json:"lat"`
+	Lon            *float64         `json:"lon"`
+	LocationSource *string          `json:"location_source"`
+	LocationLabel  *string          `json:"location_label"`
+	ID             int64            `json:"id"`
 }
 
-func (q *Queries) UpdateReceiptPartial(ctx context.Context, arg UpdateReceiptPartialParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateReceiptPartial,
-		arg.EngineSet,
+func (q *Queries) UpdateReceipt(ctx context.Context, arg UpdateReceiptParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateReceipt,
 		arg.Engine,
-		arg.ParseStatusSet,
 		arg.ParseStatus,
-		arg.LinkStatusSet,
 		arg.LinkStatus,
-		arg.MatchIdsSet,
 		arg.MatchIds,
-		arg.MerchantSet,
 		arg.Merchant,
-		arg.PurchaseDateSet,
 		arg.PurchaseDate,
-		arg.TotalAmountSet,
 		arg.TotalAmount,
-		arg.CurrencySet,
 		arg.Currency,
-		arg.TaxAmountSet,
 		arg.TaxAmount,
-		arg.RawPayloadSet,
 		arg.RawPayload,
-		arg.CanonicalDataSet,
 		arg.CanonicalData,
-		arg.ImageUrlSet,
 		arg.ImageUrl,
-		arg.ImageSha256Set,
 		arg.ImageSha256,
-		arg.LatSet,
 		arg.Lat,
-		arg.LonSet,
 		arg.Lon,
-		arg.LocationSourceSet,
 		arg.LocationSource,
-		arg.LocationLabelSet,
 		arg.LocationLabel,
-		arg.Id,
+		arg.ID,
 	)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const updateReceiptItem = `-- name: UpdateReceiptItem :one
+UPDATE receipt_items
+SET line_no = COALESCE($1::int, line_no),
+    name = COALESCE($2::text, name),
+    qty = COALESCE($3::numeric, qty),
+    unit_price = COALESCE($4::numeric, unit_price),
+    line_total = COALESCE($5::numeric, line_total),
+    sku = COALESCE($6::text, sku),
+    category_hint = COALESCE($7::text, category_hint)
+WHERE id = $8::bigint
+RETURNING id, receipt_id, line_no, name, qty, unit_price, line_total, sku, category_hint,
+          created_at, updated_at
+`
+
+type UpdateReceiptItemParams struct {
+	LineNo       *int32           `json:"line_no"`
+	Name         *string          `json:"name"`
+	Qty          *decimal.Decimal `json:"qty"`
+	UnitPrice    *decimal.Decimal `json:"unit_price"`
+	LineTotal    *decimal.Decimal `json:"line_total"`
+	Sku          *string          `json:"sku"`
+	CategoryHint *string          `json:"category_hint"`
+	ID           int64            `json:"id"`
+}
+
+func (q *Queries) UpdateReceiptItem(ctx context.Context, arg UpdateReceiptItemParams) (ReceiptItem, error) {
+	row := q.db.QueryRow(ctx, updateReceiptItem,
+		arg.LineNo,
+		arg.Name,
+		arg.Qty,
+		arg.UnitPrice,
+		arg.LineTotal,
+		arg.Sku,
+		arg.CategoryHint,
+		arg.ID,
+	)
+	var i ReceiptItem
+	err := row.Scan(
+		&i.ID,
+		&i.ReceiptID,
+		&i.LineNo,
+		&i.Name,
+		&i.Qty,
+		&i.UnitPrice,
+		&i.LineTotal,
+		&i.Sku,
+		&i.CategoryHint,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

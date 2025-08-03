@@ -7,24 +7,76 @@ package sqlcdb
 
 import (
 	"context"
+	"time"
 
 	ariand "ariand/gen/go/ariand/v1"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/shopspring/decimal"
 )
 
-const createTransaction = `-- name: CreateTransaction :one
+const bulkCategorizeTransactionsForUser = `-- name: BulkCategorizeTransactionsForUser :execrows
+UPDATE transactions
+SET category_id = $1::bigint,
+    cat_status = 3  -- manual categorization
+WHERE id = ANY($2::bigint[])
+  AND account_id IN (
+    SELECT a.id FROM accounts a
+    LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $3::uuid
+    WHERE a.owner_id = $3::uuid OR au.user_id IS NOT NULL
+  )
+`
+
+type BulkCategorizeTransactionsForUserParams struct {
+	CategoryID     int64     `json:"category_id"`
+	TransactionIds []int64   `json:"transaction_ids"`
+	UserID         uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) BulkCategorizeTransactionsForUser(ctx context.Context, arg BulkCategorizeTransactionsForUserParams) (int64, error) {
+	result, err := q.db.Exec(ctx, bulkCategorizeTransactionsForUser, arg.CategoryID, arg.TransactionIds, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const bulkDeleteTransactionsForUser = `-- name: BulkDeleteTransactionsForUser :execrows
+DELETE FROM transactions
+WHERE id = ANY($1::bigint[])
+  AND account_id IN (
+    SELECT a.id FROM accounts a
+    LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $2::uuid
+    WHERE a.owner_id = $2::uuid OR au.user_id IS NOT NULL
+  )
+`
+
+type BulkDeleteTransactionsForUserParams struct {
+	TransactionIds []int64   `json:"transaction_ids"`
+	UserID         uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) BulkDeleteTransactionsForUser(ctx context.Context, arg BulkDeleteTransactionsForUserParams) (int64, error) {
+	result, err := q.db.Exec(ctx, bulkDeleteTransactionsForUser, arg.TransactionIds, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const createTransactionForUser = `-- name: CreateTransactionForUser :one
 INSERT INTO transactions (
   email_id, account_id, tx_date, tx_amount, tx_currency, tx_direction,
   tx_desc, balance_after, category_id, merchant, user_notes,
   foreign_currency, foreign_amount, exchange_rate, suggestions, receipt_id
-) VALUES (
+)
+SELECT
   $1::text,
   $2::bigint,
   $3::timestamptz,
   $4::numeric,
   $5::char(3),
-  $6::text,
+  $6::smallint,
   $7::text,
   $8::numeric,
   $9::bigint,
@@ -35,146 +87,170 @@ INSERT INTO transactions (
   $14::numeric,
   $15::text[],
   $16::bigint
-)
+FROM accounts a
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $17::uuid
+WHERE a.id = $2::bigint
+  AND (a.owner_id = $17::uuid OR au.user_id IS NOT NULL)
 RETURNING id
 `
 
-type CreateTransactionParams struct {
-	EmailId         *string            `json:"emailId"`
-	AccountId       int64              `json:"accountId"`
-	TxDate          pgtype.Timestamptz `json:"txDate"`
-	TxAmount        decimal.Decimal    `json:"txAmount"`
-	TxCurrency      string             `json:"txCurrency"`
-	TxDirection     string             `json:"txDirection"`
-	TxDesc          *string            `json:"txDesc"`
-	BalanceAfter    *decimal.Decimal   `json:"balanceAfter"`
-	CategoryId      *int64             `json:"categoryId"`
-	Merchant        *string            `json:"merchant"`
-	UserNotes       *string            `json:"userNotes"`
-	ForeignCurrency *string            `json:"foreignCurrency"`
-	ForeignAmount   *decimal.Decimal   `json:"foreignAmount"`
-	ExchangeRate    *decimal.Decimal   `json:"exchangeRate"`
-	Suggestions     []string           `json:"suggestions"`
-	ReceiptId       *int64             `json:"receiptId"`
+type CreateTransactionForUserParams struct {
+	EmailID         *string          `json:"email_id"`
+	AccountID       int64            `json:"account_id"`
+	TxDate          time.Time        `json:"tx_date"`
+	TxAmount        decimal.Decimal  `json:"tx_amount"`
+	TxCurrency      string           `json:"tx_currency"`
+	TxDirection     int16            `json:"tx_direction"`
+	TxDesc          *string          `json:"tx_desc"`
+	BalanceAfter    *decimal.Decimal `json:"balance_after"`
+	CategoryID      *int64           `json:"category_id"`
+	Merchant        *string          `json:"merchant"`
+	UserNotes       *string          `json:"user_notes"`
+	ForeignCurrency *string          `json:"foreign_currency"`
+	ForeignAmount   *decimal.Decimal `json:"foreign_amount"`
+	ExchangeRate    *decimal.Decimal `json:"exchange_rate"`
+	Suggestions     []string         `json:"suggestions"`
+	ReceiptID       *int64           `json:"receipt_id"`
+	UserID          uuid.UUID        `json:"user_id"`
 }
 
-func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (int64, error) {
-	row := q.db.QueryRow(ctx, createTransaction,
-		arg.EmailId,
-		arg.AccountId,
+func (q *Queries) CreateTransactionForUser(ctx context.Context, arg CreateTransactionForUserParams) (int64, error) {
+	row := q.db.QueryRow(ctx, createTransactionForUser,
+		arg.EmailID,
+		arg.AccountID,
 		arg.TxDate,
 		arg.TxAmount,
 		arg.TxCurrency,
 		arg.TxDirection,
 		arg.TxDesc,
 		arg.BalanceAfter,
-		arg.CategoryId,
+		arg.CategoryID,
 		arg.Merchant,
 		arg.UserNotes,
 		arg.ForeignCurrency,
 		arg.ForeignAmount,
 		arg.ExchangeRate,
 		arg.Suggestions,
-		arg.ReceiptId,
+		arg.ReceiptID,
+		arg.UserID,
 	)
 	var id int64
 	err := row.Scan(&id)
 	return id, err
 }
 
-const deleteTransactionReturningAccount = `-- name: DeleteTransactionReturningAccount :one
+const deleteTransactionForUser = `-- name: DeleteTransactionForUser :one
 DELETE FROM transactions
 WHERE id = $1::bigint
+  AND account_id IN (
+    SELECT a.id FROM accounts a
+    LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $2::uuid
+    WHERE a.owner_id = $2::uuid OR au.user_id IS NOT NULL
+  )
 RETURNING account_id
 `
 
-func (q *Queries) DeleteTransactionReturningAccount(ctx context.Context, id int64) (int64, error) {
-	row := q.db.QueryRow(ctx, deleteTransactionReturningAccount, id)
+type DeleteTransactionForUserParams struct {
+	ID     int64     `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) DeleteTransactionForUser(ctx context.Context, arg DeleteTransactionForUserParams) (int64, error) {
+	row := q.db.QueryRow(ctx, deleteTransactionForUser, arg.ID, arg.UserID)
 	var account_id int64
 	err := row.Scan(&account_id)
 	return account_id, err
 }
 
-const findCandidateTransactions = `-- name: FindCandidateTransactions :many
+const findCandidateTransactionsForUser = `-- name: FindCandidateTransactionsForUser :many
 SELECT
   t.id, t.email_id, t.account_id, t.tx_date, t.tx_amount, t.tx_currency,
   t.tx_direction, t.tx_desc, t.balance_after, t.category_id, t.cat_status,
   t.merchant, t.user_notes, t.suggestions, t.receipt_id,
   t.foreign_currency, t.foreign_amount, t.exchange_rate,
   t.created_at, t.updated_at,
-  c.slug  AS category_slug,
+  c.slug AS category_slug,
   c.label AS category_label,
   c.color AS category_color,
   similarity(t.tx_desc::text, $1::text) AS merchant_score
 FROM transactions t
 LEFT JOIN categories c ON t.category_id = c.id
-WHERE t.receipt_id IS NULL
-  AND t.tx_direction = 'outgoing'
-  AND t.tx_date >= ($2::date - interval '60 days')
-  AND t.tx_amount BETWEEN $3::numeric AND ($3::numeric * 1.20)
+JOIN accounts a ON t.account_id = a.id
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $2::uuid
+WHERE (a.owner_id = $2::uuid OR au.user_id IS NOT NULL)
+  AND t.receipt_id IS NULL
+  AND t.tx_direction = 2
+  AND t.tx_date >= ($3::date - interval '60 days')
+  AND t.tx_amount BETWEEN $4::numeric AND ($4::numeric * 1.20)
   AND similarity(t.tx_desc::text, $1::text) > 0.3
 ORDER BY merchant_score DESC
 LIMIT 10
 `
 
-type FindCandidateTransactionsParams struct {
+type FindCandidateTransactionsForUserParams struct {
 	Merchant string          `json:"merchant"`
+	UserID   uuid.UUID       `json:"user_id"`
 	Date     pgtype.Date     `json:"date"`
 	Total    decimal.Decimal `json:"total"`
 }
 
-type FindCandidateTransactionsRow struct {
-	Id              int64                       `json:"id"`
-	EmailId         *string                     `json:"emailId"`
-	AccountId       int64                       `json:"accountId"`
-	TxDate          pgtype.Timestamptz          `json:"txDate"`
-	TxAmount        decimal.Decimal             `json:"txAmount"`
-	TxCurrency      string                      `json:"txCurrency"`
-	TxDirection     ariand.TransactionDirection `json:"txDirection"`
-	TxDesc          *string                     `json:"txDesc"`
-	BalanceAfter    *decimal.Decimal            `json:"balanceAfter"`
-	CategoryId      *int64                      `json:"categoryId"`
-	CatStatus       ariand.CategorizationStatus `json:"catStatus"`
+type FindCandidateTransactionsForUserRow struct {
+	ID              int64                       `json:"id"`
+	EmailID         *string                     `json:"email_id"`
+	AccountID       int64                       `json:"account_id"`
+	TxDate          time.Time                   `json:"tx_date"`
+	TxAmount        decimal.Decimal             `json:"tx_amount"`
+	TxCurrency      string                      `json:"tx_currency"`
+	TxDirection     ariand.TransactionDirection `json:"tx_direction"`
+	TxDesc          *string                     `json:"tx_desc"`
+	BalanceAfter    *decimal.Decimal            `json:"balance_after"`
+	CategoryID      *int64                      `json:"category_id"`
+	CatStatus       ariand.CategorizationStatus `json:"cat_status"`
 	Merchant        *string                     `json:"merchant"`
-	UserNotes       *string                     `json:"userNotes"`
+	UserNotes       *string                     `json:"user_notes"`
 	Suggestions     []string                    `json:"suggestions"`
-	ReceiptId       *int64                      `json:"receiptId"`
-	ForeignCurrency *string                     `json:"foreignCurrency"`
-	ForeignAmount   *decimal.Decimal            `json:"foreignAmount"`
-	ExchangeRate    *decimal.Decimal            `json:"exchangeRate"`
-	CreatedAt       pgtype.Timestamptz          `json:"createdAt"`
-	UpdatedAt       pgtype.Timestamptz          `json:"updatedAt"`
-	CategorySlug    *string                     `json:"categorySlug"`
-	CategoryLabel   *string                     `json:"categoryLabel"`
-	CategoryColor   *string                     `json:"categoryColor"`
-	MerchantScore   float32                     `json:"merchantScore"`
+	ReceiptID       *int64                      `json:"receipt_id"`
+	ForeignCurrency *string                     `json:"foreign_currency"`
+	ForeignAmount   *decimal.Decimal            `json:"foreign_amount"`
+	ExchangeRate    *decimal.Decimal            `json:"exchange_rate"`
+	CreatedAt       time.Time                   `json:"created_at"`
+	UpdatedAt       time.Time                   `json:"updated_at"`
+	CategorySlug    *string                     `json:"category_slug"`
+	CategoryLabel   *string                     `json:"category_label"`
+	CategoryColor   *string                     `json:"category_color"`
+	MerchantScore   float32                     `json:"merchant_score"`
 }
 
-func (q *Queries) FindCandidateTransactions(ctx context.Context, arg FindCandidateTransactionsParams) ([]FindCandidateTransactionsRow, error) {
-	rows, err := q.db.Query(ctx, findCandidateTransactions, arg.Merchant, arg.Date, arg.Total)
+func (q *Queries) FindCandidateTransactionsForUser(ctx context.Context, arg FindCandidateTransactionsForUserParams) ([]FindCandidateTransactionsForUserRow, error) {
+	rows, err := q.db.Query(ctx, findCandidateTransactionsForUser,
+		arg.Merchant,
+		arg.UserID,
+		arg.Date,
+		arg.Total,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []FindCandidateTransactionsRow
+	var items []FindCandidateTransactionsForUserRow
 	for rows.Next() {
-		var i FindCandidateTransactionsRow
+		var i FindCandidateTransactionsForUserRow
 		if err := rows.Scan(
-			&i.Id,
-			&i.EmailId,
-			&i.AccountId,
+			&i.ID,
+			&i.EmailID,
+			&i.AccountID,
 			&i.TxDate,
 			&i.TxAmount,
 			&i.TxCurrency,
 			&i.TxDirection,
 			&i.TxDesc,
 			&i.BalanceAfter,
-			&i.CategoryId,
+			&i.CategoryID,
 			&i.CatStatus,
 			&i.Merchant,
 			&i.UserNotes,
 			&i.Suggestions,
-			&i.ReceiptId,
+			&i.ReceiptID,
 			&i.ForeignCurrency,
 			&i.ForeignAmount,
 			&i.ExchangeRate,
@@ -195,66 +271,112 @@ func (q *Queries) FindCandidateTransactions(ctx context.Context, arg FindCandida
 	return items, nil
 }
 
-const getTransaction = `-- name: GetTransaction :one
+const getTransactionCountByAccountForUser = `-- name: GetTransactionCountByAccountForUser :many
+SELECT a.id, a.name, COUNT(t.id) AS transaction_count
+FROM accounts a
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
+LEFT JOIN transactions t ON a.id = t.account_id
+WHERE a.owner_id = $1::uuid OR au.user_id IS NOT NULL
+GROUP BY a.id, a.name
+ORDER BY transaction_count DESC
+`
+
+type GetTransactionCountByAccountForUserRow struct {
+	ID               int64  `json:"id"`
+	Name             string `json:"name"`
+	TransactionCount int64  `json:"transaction_count"`
+}
+
+func (q *Queries) GetTransactionCountByAccountForUser(ctx context.Context, userID uuid.UUID) ([]GetTransactionCountByAccountForUserRow, error) {
+	rows, err := q.db.Query(ctx, getTransactionCountByAccountForUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTransactionCountByAccountForUserRow
+	for rows.Next() {
+		var i GetTransactionCountByAccountForUserRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.TransactionCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTransactionForUser = `-- name: GetTransactionForUser :one
 SELECT
   t.id, t.email_id, t.account_id, t.tx_date, t.tx_amount, t.tx_currency,
   t.tx_direction, t.tx_desc, t.balance_after, t.category_id, t.cat_status,
   t.merchant, t.user_notes, t.suggestions, t.receipt_id,
   t.foreign_currency, t.foreign_amount, t.exchange_rate,
   t.created_at, t.updated_at,
-  c.slug  AS category_slug,
+  c.slug AS category_slug,
   c.label AS category_label,
-  c.color AS category_color
+  c.color AS category_color,
+  a.name AS account_name
 FROM transactions t
 LEFT JOIN categories c ON t.category_id = c.id
-WHERE t.id = $1::bigint
+JOIN accounts a ON t.account_id = a.id
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
+WHERE t.id = $2::bigint
+  AND (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
 `
 
-type GetTransactionRow struct {
-	Id              int64                       `json:"id"`
-	EmailId         *string                     `json:"emailId"`
-	AccountId       int64                       `json:"accountId"`
-	TxDate          pgtype.Timestamptz          `json:"txDate"`
-	TxAmount        decimal.Decimal             `json:"txAmount"`
-	TxCurrency      string                      `json:"txCurrency"`
-	TxDirection     ariand.TransactionDirection `json:"txDirection"`
-	TxDesc          *string                     `json:"txDesc"`
-	BalanceAfter    *decimal.Decimal            `json:"balanceAfter"`
-	CategoryId      *int64                      `json:"categoryId"`
-	CatStatus       ariand.CategorizationStatus `json:"catStatus"`
-	Merchant        *string                     `json:"merchant"`
-	UserNotes       *string                     `json:"userNotes"`
-	Suggestions     []string                    `json:"suggestions"`
-	ReceiptId       *int64                      `json:"receiptId"`
-	ForeignCurrency *string                     `json:"foreignCurrency"`
-	ForeignAmount   *decimal.Decimal            `json:"foreignAmount"`
-	ExchangeRate    *decimal.Decimal            `json:"exchangeRate"`
-	CreatedAt       pgtype.Timestamptz          `json:"createdAt"`
-	UpdatedAt       pgtype.Timestamptz          `json:"updatedAt"`
-	CategorySlug    *string                     `json:"categorySlug"`
-	CategoryLabel   *string                     `json:"categoryLabel"`
-	CategoryColor   *string                     `json:"categoryColor"`
+type GetTransactionForUserParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	ID     int64     `json:"id"`
 }
 
-func (q *Queries) GetTransaction(ctx context.Context, id int64) (GetTransactionRow, error) {
-	row := q.db.QueryRow(ctx, getTransaction, id)
-	var i GetTransactionRow
+type GetTransactionForUserRow struct {
+	ID              int64                       `json:"id"`
+	EmailID         *string                     `json:"email_id"`
+	AccountID       int64                       `json:"account_id"`
+	TxDate          time.Time                   `json:"tx_date"`
+	TxAmount        decimal.Decimal             `json:"tx_amount"`
+	TxCurrency      string                      `json:"tx_currency"`
+	TxDirection     ariand.TransactionDirection `json:"tx_direction"`
+	TxDesc          *string                     `json:"tx_desc"`
+	BalanceAfter    *decimal.Decimal            `json:"balance_after"`
+	CategoryID      *int64                      `json:"category_id"`
+	CatStatus       ariand.CategorizationStatus `json:"cat_status"`
+	Merchant        *string                     `json:"merchant"`
+	UserNotes       *string                     `json:"user_notes"`
+	Suggestions     []string                    `json:"suggestions"`
+	ReceiptID       *int64                      `json:"receipt_id"`
+	ForeignCurrency *string                     `json:"foreign_currency"`
+	ForeignAmount   *decimal.Decimal            `json:"foreign_amount"`
+	ExchangeRate    *decimal.Decimal            `json:"exchange_rate"`
+	CreatedAt       time.Time                   `json:"created_at"`
+	UpdatedAt       time.Time                   `json:"updated_at"`
+	CategorySlug    *string                     `json:"category_slug"`
+	CategoryLabel   *string                     `json:"category_label"`
+	CategoryColor   *string                     `json:"category_color"`
+	AccountName     string                      `json:"account_name"`
+}
+
+func (q *Queries) GetTransactionForUser(ctx context.Context, arg GetTransactionForUserParams) (GetTransactionForUserRow, error) {
+	row := q.db.QueryRow(ctx, getTransactionForUser, arg.UserID, arg.ID)
+	var i GetTransactionForUserRow
 	err := row.Scan(
-		&i.Id,
-		&i.EmailId,
-		&i.AccountId,
+		&i.ID,
+		&i.EmailID,
+		&i.AccountID,
 		&i.TxDate,
 		&i.TxAmount,
 		&i.TxCurrency,
 		&i.TxDirection,
 		&i.TxDesc,
 		&i.BalanceAfter,
-		&i.CategoryId,
+		&i.CategoryID,
 		&i.CatStatus,
 		&i.Merchant,
 		&i.UserNotes,
 		&i.Suggestions,
-		&i.ReceiptId,
+		&i.ReceiptID,
 		&i.ForeignCurrency,
 		&i.ForeignAmount,
 		&i.ExchangeRate,
@@ -263,87 +385,99 @@ func (q *Queries) GetTransaction(ctx context.Context, id int64) (GetTransactionR
 		&i.CategorySlug,
 		&i.CategoryLabel,
 		&i.CategoryColor,
+		&i.AccountName,
 	)
 	return i, err
 }
 
-const listTransactions = `-- name: ListTransactions :many
+const listTransactionsForUser = `-- name: ListTransactionsForUser :many
 SELECT
   t.id, t.email_id, t.account_id, t.tx_date, t.tx_amount, t.tx_currency,
   t.tx_direction, t.tx_desc, t.balance_after, t.category_id, t.cat_status,
   t.merchant, t.user_notes, t.suggestions, t.receipt_id,
   t.foreign_currency, t.foreign_amount, t.exchange_rate,
   t.created_at, t.updated_at,
-  c.slug  AS category_slug,
+  c.slug AS category_slug,
   c.label AS category_label,
-  c.color AS category_color
+  c.color AS category_color,
+  a.name AS account_name
 FROM transactions t
 LEFT JOIN categories c ON t.category_id = c.id
-WHERE TRUE
-  AND ($1::timestamptz IS NULL OR $2::bigint IS NULL
-       OR (t.tx_date, t.id) < ($1::timestamptz, $2::bigint))
-  AND ($3::timestamptz IS NULL OR t.tx_date >= $3::timestamptz)
-  AND ($4::timestamptz   IS NULL OR t.tx_date <= $4::timestamptz)
-  AND ($5::numeric IS NULL OR t.tx_amount >= $5::numeric)
-  AND ($6::numeric IS NULL OR t.tx_amount <= $6::numeric)
-  AND ($7::text IS NULL OR t.tx_direction = $7::text)
-  AND ($8::bigint[] IS NULL OR t.account_id = ANY($8::bigint[]))
-  AND ($9::text[] IS NULL OR c.slug = ANY($9::text[]))
-  AND ($10::text IS NULL OR t.merchant ILIKE ('%' || $10::text || '%'))
-  AND ($11::text     IS NULL OR t.tx_desc ILIKE ('%' || $11::text || '%'))
-  AND ($12::char(3) IS NULL OR t.tx_currency = $12::char(3))
-  AND ($13::time IS NULL OR t.tx_date::time >= $13::time)
-  AND ($14::time   IS NULL OR t.tx_date::time <= $14::time)
+JOIN accounts a ON t.account_id = a.id
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
+WHERE (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
+  AND (
+        $2::timestamptz IS NULL
+        OR $3::bigint IS NULL
+        OR (t.tx_date, t.id) < ($2::timestamptz, $3::bigint)
+      )
+  AND ($4::timestamptz IS NULL OR t.tx_date >= $4::timestamptz)
+  AND ($5::timestamptz IS NULL OR t.tx_date <= $5::timestamptz)
+  AND ($6::numeric IS NULL OR t.tx_amount >= $6::numeric)
+  AND ($7::numeric IS NULL OR t.tx_amount <= $7::numeric)
+  AND ($8::smallint IS NULL OR t.tx_direction = $8::smallint)
+  AND ($9::bigint[] IS NULL OR t.account_id = ANY($9::bigint[]))
+  AND ($10::text[] IS NULL OR c.slug = ANY($10::text[]))
+  AND ($11::text IS NULL OR t.merchant ILIKE ('%' || $11::text || '%'))
+  AND ($12::text IS NULL OR t.tx_desc ILIKE ('%' || $12::text || '%'))
+  AND ($13::char(3) IS NULL OR t.tx_currency = $13::char(3))
+  AND ($14::time IS NULL OR t.tx_date::time >= $14::time)
+  AND ($15::time IS NULL OR t.tx_date::time <= $15::time)
 ORDER BY t.tx_date DESC, t.id DESC
+LIMIT COALESCE($16::int, 100)
 `
 
-type ListTransactionsParams struct {
-	CursorDate pgtype.Timestamptz `json:"cursorDate"`
-	CursorId   *int64             `json:"cursorId"`
-	Start      pgtype.Timestamptz `json:"start"`
-	End        pgtype.Timestamptz `json:"end"`
-	AmountMin  *decimal.Decimal   `json:"amountMin"`
-	AmountMax  *decimal.Decimal   `json:"amountMax"`
-	Direction  *string            `json:"direction"`
-	AccountIds []int64            `json:"accountIds"`
-	Categories []string           `json:"categories"`
-	MerchantQ  *string            `json:"merchantQ"`
-	DescQ      *string            `json:"descQ"`
-	Currency   *string            `json:"currency"`
-	TodStart   pgtype.Time        `json:"todStart"`
-	TodEnd     pgtype.Time        `json:"todEnd"`
+type ListTransactionsForUserParams struct {
+	UserID     uuid.UUID        `json:"user_id"`
+	CursorDate *time.Time       `json:"cursor_date"`
+	CursorID   *int64           `json:"cursor_id"`
+	Start      *time.Time       `json:"start"`
+	End        *time.Time       `json:"end"`
+	AmountMin  *decimal.Decimal `json:"amount_min"`
+	AmountMax  *decimal.Decimal `json:"amount_max"`
+	Direction  *int16           `json:"direction"`
+	AccountIds []int64          `json:"account_ids"`
+	Categories []string         `json:"categories"`
+	MerchantQ  *string          `json:"merchant_q"`
+	DescQ      *string          `json:"desc_q"`
+	Currency   *string          `json:"currency"`
+	TodStart   pgtype.Time      `json:"tod_start"`
+	TodEnd     pgtype.Time      `json:"tod_end"`
+	Limit      *int32           `json:"limit"`
 }
 
-type ListTransactionsRow struct {
-	Id              int64                       `json:"id"`
-	EmailId         *string                     `json:"emailId"`
-	AccountId       int64                       `json:"accountId"`
-	TxDate          pgtype.Timestamptz          `json:"txDate"`
-	TxAmount        decimal.Decimal             `json:"txAmount"`
-	TxCurrency      string                      `json:"txCurrency"`
-	TxDirection     ariand.TransactionDirection `json:"txDirection"`
-	TxDesc          *string                     `json:"txDesc"`
-	BalanceAfter    *decimal.Decimal            `json:"balanceAfter"`
-	CategoryId      *int64                      `json:"categoryId"`
-	CatStatus       ariand.CategorizationStatus `json:"catStatus"`
+type ListTransactionsForUserRow struct {
+	ID              int64                       `json:"id"`
+	EmailID         *string                     `json:"email_id"`
+	AccountID       int64                       `json:"account_id"`
+	TxDate          time.Time                   `json:"tx_date"`
+	TxAmount        decimal.Decimal             `json:"tx_amount"`
+	TxCurrency      string                      `json:"tx_currency"`
+	TxDirection     ariand.TransactionDirection `json:"tx_direction"`
+	TxDesc          *string                     `json:"tx_desc"`
+	BalanceAfter    *decimal.Decimal            `json:"balance_after"`
+	CategoryID      *int64                      `json:"category_id"`
+	CatStatus       ariand.CategorizationStatus `json:"cat_status"`
 	Merchant        *string                     `json:"merchant"`
-	UserNotes       *string                     `json:"userNotes"`
+	UserNotes       *string                     `json:"user_notes"`
 	Suggestions     []string                    `json:"suggestions"`
-	ReceiptId       *int64                      `json:"receiptId"`
-	ForeignCurrency *string                     `json:"foreignCurrency"`
-	ForeignAmount   *decimal.Decimal            `json:"foreignAmount"`
-	ExchangeRate    *decimal.Decimal            `json:"exchangeRate"`
-	CreatedAt       pgtype.Timestamptz          `json:"createdAt"`
-	UpdatedAt       pgtype.Timestamptz          `json:"updatedAt"`
-	CategorySlug    *string                     `json:"categorySlug"`
-	CategoryLabel   *string                     `json:"categoryLabel"`
-	CategoryColor   *string                     `json:"categoryColor"`
+	ReceiptID       *int64                      `json:"receipt_id"`
+	ForeignCurrency *string                     `json:"foreign_currency"`
+	ForeignAmount   *decimal.Decimal            `json:"foreign_amount"`
+	ExchangeRate    *decimal.Decimal            `json:"exchange_rate"`
+	CreatedAt       time.Time                   `json:"created_at"`
+	UpdatedAt       time.Time                   `json:"updated_at"`
+	CategorySlug    *string                     `json:"category_slug"`
+	CategoryLabel   *string                     `json:"category_label"`
+	CategoryColor   *string                     `json:"category_color"`
+	AccountName     string                      `json:"account_name"`
 }
 
-func (q *Queries) ListTransactions(ctx context.Context, arg ListTransactionsParams) ([]ListTransactionsRow, error) {
-	rows, err := q.db.Query(ctx, listTransactions,
+func (q *Queries) ListTransactionsForUser(ctx context.Context, arg ListTransactionsForUserParams) ([]ListTransactionsForUserRow, error) {
+	rows, err := q.db.Query(ctx, listTransactionsForUser,
+		arg.UserID,
 		arg.CursorDate,
-		arg.CursorId,
+		arg.CursorID,
 		arg.Start,
 		arg.End,
 		arg.AmountMin,
@@ -356,30 +490,31 @@ func (q *Queries) ListTransactions(ctx context.Context, arg ListTransactionsPara
 		arg.Currency,
 		arg.TodStart,
 		arg.TodEnd,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListTransactionsRow
+	var items []ListTransactionsForUserRow
 	for rows.Next() {
-		var i ListTransactionsRow
+		var i ListTransactionsForUserRow
 		if err := rows.Scan(
-			&i.Id,
-			&i.EmailId,
-			&i.AccountId,
+			&i.ID,
+			&i.EmailID,
+			&i.AccountID,
 			&i.TxDate,
 			&i.TxAmount,
 			&i.TxCurrency,
 			&i.TxDirection,
 			&i.TxDesc,
 			&i.BalanceAfter,
-			&i.CategoryId,
+			&i.CategoryID,
 			&i.CatStatus,
 			&i.Merchant,
 			&i.UserNotes,
 			&i.Suggestions,
-			&i.ReceiptId,
+			&i.ReceiptID,
 			&i.ForeignCurrency,
 			&i.ForeignAmount,
 			&i.ExchangeRate,
@@ -388,6 +523,7 @@ func (q *Queries) ListTransactions(ctx context.Context, arg ListTransactionsPara
 			&i.CategorySlug,
 			&i.CategoryLabel,
 			&i.CategoryColor,
+			&i.AccountName,
 		); err != nil {
 			return nil, err
 		}
@@ -406,12 +542,12 @@ WHERE id = $2::bigint AND receipt_id IS NULL
 `
 
 type SetTransactionReceiptParams struct {
-	ReceiptId int64 `json:"receiptId"`
-	Id        int64 `json:"id"`
+	ReceiptID int64 `json:"receipt_id"`
+	ID        int64 `json:"id"`
 }
 
 func (q *Queries) SetTransactionReceipt(ctx context.Context, arg SetTransactionReceiptParams) (int64, error) {
-	result, err := q.db.Exec(ctx, setTransactionReceipt, arg.ReceiptId, arg.Id)
+	result, err := q.db.Exec(ctx, setTransactionReceipt, arg.ReceiptID, arg.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -421,14 +557,14 @@ func (q *Queries) SetTransactionReceipt(ctx context.Context, arg SetTransactionR
 const syncAccountBalances = `-- name: SyncAccountBalances :exec
 WITH transaction_deltas AS (
   SELECT id,
-         SUM(CASE WHEN tx_direction = 'incoming' THEN tx_amount ELSE -tx_amount END)
+         SUM(CASE WHEN tx_direction = 1 THEN tx_amount ELSE -tx_amount END)
            OVER (PARTITION BY account_id ORDER BY tx_date, id) AS running_delta
   FROM transactions
   WHERE account_id = $1::bigint
 ),
 anchor_point AS (
   SELECT a.anchor_balance,
-         COALESCE(SUM(CASE WHEN t.tx_direction = 'incoming' THEN t.tx_amount ELSE -t.tx_amount END), 0.0) AS delta_at_anchor
+         COALESCE(SUM(CASE WHEN t.tx_direction = 1 THEN t.tx_amount ELSE -t.tx_amount END), 0.0) AS delta_at_anchor
   FROM accounts a
   LEFT JOIN transactions t ON t.account_id = a.id AND t.tx_date < a.anchor_date
   WHERE a.id = $1::bigint
@@ -446,89 +582,71 @@ func (q *Queries) SyncAccountBalances(ctx context.Context, accountID int64) erro
 	return err
 }
 
-const updateTransactionPartial = `-- name: UpdateTransactionPartial :one
-UPDATE transactions SET
-  email_id         = CASE WHEN $1::bool         THEN $2::text           ELSE email_id         END,
-  tx_date          = CASE WHEN $3::bool          THEN $4::timestamptz                 ELSE tx_date          END,
-  tx_amount        = CASE WHEN $5::bool        THEN $6::numeric                   ELSE tx_amount        END,
-  tx_currency      = CASE WHEN $7::bool      THEN $8::char(3)                 ELSE tx_currency      END,
-  tx_direction     = CASE WHEN $9::bool     THEN $10::text                   ELSE tx_direction     END,
-  tx_desc          = CASE WHEN $11::bool          THEN $12::text            ELSE tx_desc          END,
-  category_id      = CASE WHEN $13::bool      THEN $14::bigint      ELSE category_id      END,
-  merchant         = CASE WHEN $15::bool         THEN $16::text           ELSE merchant         END,
-  user_notes       = CASE WHEN $17::bool       THEN $18::text         ELSE user_notes       END,
-  foreign_currency = CASE WHEN $19::bool THEN $20::char(3) ELSE foreign_currency END,
-  foreign_amount   = CASE WHEN $21::bool   THEN $22::numeric  ELSE foreign_amount   END,
-  exchange_rate    = CASE WHEN $23::bool    THEN $24::numeric   ELSE exchange_rate    END,
-  suggestions      = CASE WHEN $25::bool      THEN $26::text[]      ELSE suggestions      END,
-  receipt_id       = CASE WHEN $27::bool       THEN $28::bigint       ELSE receipt_id       END
-WHERE id = $29::bigint
+const updateTransaction = `-- name: UpdateTransaction :one
+UPDATE transactions
+SET email_id = COALESCE($1::text, email_id),
+    tx_date = COALESCE($2::timestamptz, tx_date),
+    tx_amount = COALESCE($3::numeric, tx_amount),
+    tx_currency = COALESCE($4::char(3), tx_currency),
+    tx_direction = COALESCE($5::smallint, tx_direction),
+    tx_desc = COALESCE($6::text, tx_desc),
+    category_id = COALESCE($7::bigint, category_id),
+    merchant = COALESCE($8::text, merchant),
+    user_notes = COALESCE($9::text, user_notes),
+    foreign_currency = COALESCE($10::char(3), foreign_currency),
+    foreign_amount = COALESCE($11::numeric, foreign_amount),
+    exchange_rate = COALESCE($12::numeric, exchange_rate),
+    suggestions = COALESCE($13::text[], suggestions),
+    receipt_id = COALESCE($14::bigint, receipt_id),
+    cat_status = COALESCE($15::smallint, cat_status)
+WHERE id = $16::bigint
+  AND account_id IN (
+    SELECT a.id FROM accounts a
+    LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $17::uuid
+    WHERE a.owner_id = $17::uuid OR au.user_id IS NOT NULL
+  )
 RETURNING account_id
 `
 
-type UpdateTransactionPartialParams struct {
-	EmailIdSet         bool               `json:"emailIdSet"`
-	EmailId            *string            `json:"emailId"`
-	TxDateSet          bool               `json:"txDateSet"`
-	TxDate             pgtype.Timestamptz `json:"txDate"`
-	TxAmountSet        bool               `json:"txAmountSet"`
-	TxAmount           decimal.Decimal    `json:"txAmount"`
-	TxCurrencySet      bool               `json:"txCurrencySet"`
-	TxCurrency         string             `json:"txCurrency"`
-	TxDirectionSet     bool               `json:"txDirectionSet"`
-	TxDirection        string             `json:"txDirection"`
-	TxDescSet          bool               `json:"txDescSet"`
-	TxDesc             *string            `json:"txDesc"`
-	CategoryIdSet      bool               `json:"categoryIdSet"`
-	CategoryId         *int64             `json:"categoryId"`
-	MerchantSet        bool               `json:"merchantSet"`
-	Merchant           *string            `json:"merchant"`
-	UserNotesSet       bool               `json:"userNotesSet"`
-	UserNotes          *string            `json:"userNotes"`
-	ForeignCurrencySet bool               `json:"foreignCurrencySet"`
-	ForeignCurrency    *string            `json:"foreignCurrency"`
-	ForeignAmountSet   bool               `json:"foreignAmountSet"`
-	ForeignAmount      *decimal.Decimal   `json:"foreignAmount"`
-	ExchangeRateSet    bool               `json:"exchangeRateSet"`
-	ExchangeRate       *decimal.Decimal   `json:"exchangeRate"`
-	SuggestionsSet     bool               `json:"suggestionsSet"`
-	Suggestions        []string           `json:"suggestions"`
-	ReceiptIdSet       bool               `json:"receiptIdSet"`
-	ReceiptId          *int64             `json:"receiptId"`
-	Id                 int64              `json:"id"`
+type UpdateTransactionParams struct {
+	EmailID         *string          `json:"email_id"`
+	TxDate          *time.Time       `json:"tx_date"`
+	TxAmount        *decimal.Decimal `json:"tx_amount"`
+	TxCurrency      *string          `json:"tx_currency"`
+	TxDirection     *int16           `json:"tx_direction"`
+	TxDesc          *string          `json:"tx_desc"`
+	CategoryID      *int64           `json:"category_id"`
+	Merchant        *string          `json:"merchant"`
+	UserNotes       *string          `json:"user_notes"`
+	ForeignCurrency *string          `json:"foreign_currency"`
+	ForeignAmount   *decimal.Decimal `json:"foreign_amount"`
+	ExchangeRate    *decimal.Decimal `json:"exchange_rate"`
+	Suggestions     []string         `json:"suggestions"`
+	ReceiptID       *int64           `json:"receipt_id"`
+	CatStatus       *int16           `json:"cat_status"`
+	ID              int64            `json:"id"`
+	UserID          uuid.UUID        `json:"user_id"`
 }
 
-func (q *Queries) UpdateTransactionPartial(ctx context.Context, arg UpdateTransactionPartialParams) (int64, error) {
-	row := q.db.QueryRow(ctx, updateTransactionPartial,
-		arg.EmailIdSet,
-		arg.EmailId,
-		arg.TxDateSet,
+func (q *Queries) UpdateTransaction(ctx context.Context, arg UpdateTransactionParams) (int64, error) {
+	row := q.db.QueryRow(ctx, updateTransaction,
+		arg.EmailID,
 		arg.TxDate,
-		arg.TxAmountSet,
 		arg.TxAmount,
-		arg.TxCurrencySet,
 		arg.TxCurrency,
-		arg.TxDirectionSet,
 		arg.TxDirection,
-		arg.TxDescSet,
 		arg.TxDesc,
-		arg.CategoryIdSet,
-		arg.CategoryId,
-		arg.MerchantSet,
+		arg.CategoryID,
 		arg.Merchant,
-		arg.UserNotesSet,
 		arg.UserNotes,
-		arg.ForeignCurrencySet,
 		arg.ForeignCurrency,
-		arg.ForeignAmountSet,
 		arg.ForeignAmount,
-		arg.ExchangeRateSet,
 		arg.ExchangeRate,
-		arg.SuggestionsSet,
 		arg.Suggestions,
-		arg.ReceiptIdSet,
-		arg.ReceiptId,
-		arg.Id,
+		arg.ReceiptID,
+		arg.CatStatus,
+		arg.ID,
+		arg.UserID,
 	)
 	var account_id int64
 	err := row.Scan(&account_id)

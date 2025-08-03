@@ -7,90 +7,388 @@ package sqlcdb
 
 import (
 	"context"
+	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	ariand "ariand/gen/go/ariand/v1"
+	"github.com/google/uuid"
 )
 
-const getDashboardBalance = `-- name: GetDashboardBalance :one
-SELECT COALESCE(SUM(a.anchor_balance + COALESCE(d.delta, 0)), 0)::double precision AS total_balance
+const getAccountBalancesForUser = `-- name: GetAccountBalancesForUser :many
+SELECT
+  a.id,
+  a.name,
+  a.account_type,
+  a.anchor_balance + COALESCE(d.delta, 0) AS current_balance,
+  a.anchor_currency AS currency
 FROM accounts a
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
 LEFT JOIN LATERAL (
   SELECT SUM(
     CASE
-      WHEN t.tx_direction = 'incoming' THEN t.tx_amount
-      WHEN t.tx_direction = 'outgoing' THEN -t.tx_amount
+      WHEN t.tx_direction = 1 THEN t.tx_amount
+      WHEN t.tx_direction = 2 THEN -t.tx_amount
     END
   ) AS delta
   FROM transactions t
   WHERE t.account_id = a.id
     AND t.tx_date > a.anchor_date
 ) d ON TRUE
+WHERE (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
+ORDER BY current_balance DESC
 `
 
-func (q *Queries) GetDashboardBalance(ctx context.Context) (float64, error) {
-	row := q.db.QueryRow(ctx, getDashboardBalance)
+type GetAccountBalancesForUserRow struct {
+	ID             int64              `json:"id"`
+	Name           string             `json:"name"`
+	AccountType    ariand.AccountType `json:"account_type"`
+	CurrentBalance int32              `json:"current_balance"`
+	Currency       string             `json:"currency"`
+}
+
+func (q *Queries) GetAccountBalancesForUser(ctx context.Context, userID uuid.UUID) ([]GetAccountBalancesForUserRow, error) {
+	rows, err := q.db.Query(ctx, getAccountBalancesForUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAccountBalancesForUserRow
+	for rows.Next() {
+		var i GetAccountBalancesForUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.AccountType,
+			&i.CurrentBalance,
+			&i.Currency,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getDashboardBalanceForUser = `-- name: GetDashboardBalanceForUser :one
+SELECT COALESCE(SUM(a.anchor_balance + COALESCE(d.delta, 0)), 0)::double precision AS total_balance
+FROM accounts a
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
+LEFT JOIN LATERAL (
+  SELECT SUM(
+    CASE
+      WHEN t.tx_direction = 1 THEN t.tx_amount
+      WHEN t.tx_direction = 2 THEN -t.tx_amount
+    END
+  ) AS delta
+  FROM transactions t
+  WHERE t.account_id = a.id
+    AND t.tx_date > a.anchor_date
+) d ON TRUE
+WHERE (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
+`
+
+func (q *Queries) GetDashboardBalanceForUser(ctx context.Context, userID uuid.UUID) (float64, error) {
+	row := q.db.QueryRow(ctx, getDashboardBalanceForUser, userID)
 	var total_balance float64
 	err := row.Scan(&total_balance)
 	return total_balance, err
 }
 
-const getDashboardDebt = `-- name: GetDashboardDebt :one
+const getDashboardDebtForUser = `-- name: GetDashboardDebtForUser :one
 SELECT COALESCE(SUM(a.anchor_balance + COALESCE(d.delta, 0)), 0)::double precision AS total_debt
 FROM accounts a
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
 LEFT JOIN LATERAL (
   SELECT SUM(
     CASE
-      WHEN t.tx_direction = 'incoming' THEN t.tx_amount
-      WHEN t.tx_direction = 'outgoing' THEN -t.tx_amount
+      WHEN t.tx_direction = 1 THEN t.tx_amount
+      WHEN t.tx_direction = 2 THEN -t.tx_amount
     END
   ) AS delta
   FROM transactions t
   WHERE t.account_id = a.id
     AND t.tx_date > a.anchor_date
 ) d ON TRUE
-WHERE a.account_type = 'credit_card'
+WHERE (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
+  AND a.account_type = 3
 `
 
-func (q *Queries) GetDashboardDebt(ctx context.Context) (float64, error) {
-	row := q.db.QueryRow(ctx, getDashboardDebt)
+func (q *Queries) GetDashboardDebtForUser(ctx context.Context, userID uuid.UUID) (float64, error) {
+	row := q.db.QueryRow(ctx, getDashboardDebtForUser, userID)
 	var total_debt float64
 	err := row.Scan(&total_debt)
 	return total_debt, err
 }
 
-const getDashboardTrends = `-- name: GetDashboardTrends :many
+const getDashboardSummaryForUser = `-- name: GetDashboardSummaryForUser :one
 SELECT
-  to_char(tx_date::date, 'YYYY-MM-DD') AS date,
-  SUM(CASE WHEN tx_direction = 'incoming' THEN tx_amount ELSE 0 END) AS income,
-  SUM(CASE WHEN tx_direction = 'outgoing' THEN tx_amount ELSE 0 END) AS expenses
-FROM transactions
-WHERE ($1::timestamptz IS NULL OR tx_date >= $1::timestamptz)
-  AND ($2::timestamptz   IS NULL OR tx_date <= $2::timestamptz)
+  COUNT(DISTINCT a.id) AS total_accounts,
+  COUNT(t.id) AS total_transactions,
+  COALESCE(SUM(CASE WHEN t.tx_direction = 1 THEN t.tx_amount ELSE 0 END), 0) AS total_income,
+  COALESCE(SUM(CASE WHEN t.tx_direction = 2 THEN t.tx_amount ELSE 0 END), 0) AS total_expenses,
+  COUNT(DISTINCT CASE WHEN t.tx_date >= CURRENT_DATE - INTERVAL '30 days' THEN t.id END) AS transactions_last_30_days,
+  COUNT(DISTINCT CASE WHEN t.category_id IS NULL THEN t.id END) AS uncategorized_transactions
+FROM accounts a
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
+LEFT JOIN transactions t ON a.id = t.account_id
+WHERE (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
+  AND ($2::timestamptz IS NULL OR t.tx_date >= $2::timestamptz)
+  AND ($3::timestamptz IS NULL OR t.tx_date <= $3::timestamptz)
+`
+
+type GetDashboardSummaryForUserParams struct {
+	UserID uuid.UUID  `json:"user_id"`
+	Start  *time.Time `json:"start"`
+	End    *time.Time `json:"end"`
+}
+
+type GetDashboardSummaryForUserRow struct {
+	TotalAccounts             int64       `json:"total_accounts"`
+	TotalTransactions         int64       `json:"total_transactions"`
+	TotalIncome               interface{} `json:"total_income"`
+	TotalExpenses             interface{} `json:"total_expenses"`
+	TransactionsLast30Days    int64       `json:"transactions_last_30_days"`
+	UncategorizedTransactions int64       `json:"uncategorized_transactions"`
+}
+
+func (q *Queries) GetDashboardSummaryForUser(ctx context.Context, arg GetDashboardSummaryForUserParams) (GetDashboardSummaryForUserRow, error) {
+	row := q.db.QueryRow(ctx, getDashboardSummaryForUser, arg.UserID, arg.Start, arg.End)
+	var i GetDashboardSummaryForUserRow
+	err := row.Scan(
+		&i.TotalAccounts,
+		&i.TotalTransactions,
+		&i.TotalIncome,
+		&i.TotalExpenses,
+		&i.TransactionsLast30Days,
+		&i.UncategorizedTransactions,
+	)
+	return i, err
+}
+
+const getDashboardTrendsForUser = `-- name: GetDashboardTrendsForUser :many
+
+SELECT
+  to_char(t.tx_date::date, 'YYYY-MM-DD') AS date,
+  SUM(CASE WHEN t.tx_direction = 1 THEN t.tx_amount ELSE 0 END) AS income,
+  SUM(CASE WHEN t.tx_direction = 2 THEN t.tx_amount ELSE 0 END) AS expenses
+FROM transactions t
+JOIN accounts a ON t.account_id = a.id
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
+WHERE (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
+  AND ($2::timestamptz IS NULL OR t.tx_date >= $2::timestamptz)
+  AND ($3::timestamptz IS NULL OR t.tx_date <= $3::timestamptz)
 GROUP BY date
 ORDER BY date
 `
 
-type GetDashboardTrendsParams struct {
-	Start pgtype.Timestamptz `json:"start"`
-	End   pgtype.Timestamptz `json:"end"`
+type GetDashboardTrendsForUserParams struct {
+	UserID uuid.UUID  `json:"user_id"`
+	Start  *time.Time `json:"start"`
+	End    *time.Time `json:"end"`
 }
 
-type GetDashboardTrendsRow struct {
+type GetDashboardTrendsForUserRow struct {
 	Date     string `json:"date"`
 	Income   int64  `json:"income"`
 	Expenses int64  `json:"expenses"`
 }
 
-func (q *Queries) GetDashboardTrends(ctx context.Context, arg GetDashboardTrendsParams) ([]GetDashboardTrendsRow, error) {
-	rows, err := q.db.Query(ctx, getDashboardTrends, arg.Start, arg.End)
+// credit card accounts
+func (q *Queries) GetDashboardTrendsForUser(ctx context.Context, arg GetDashboardTrendsForUserParams) ([]GetDashboardTrendsForUserRow, error) {
+	rows, err := q.db.Query(ctx, getDashboardTrendsForUser, arg.UserID, arg.Start, arg.End)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetDashboardTrendsRow
+	var items []GetDashboardTrendsForUserRow
 	for rows.Next() {
-		var i GetDashboardTrendsRow
+		var i GetDashboardTrendsForUserRow
 		if err := rows.Scan(&i.Date, &i.Income, &i.Expenses); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getMonthlyComparisonForUser = `-- name: GetMonthlyComparisonForUser :many
+SELECT
+  to_char(t.tx_date, 'YYYY-MM') AS month,
+  SUM(CASE WHEN t.tx_direction = 1 THEN t.tx_amount ELSE 0 END) AS income,
+  SUM(CASE WHEN t.tx_direction = 2 THEN t.tx_amount ELSE 0 END) AS expenses,
+  SUM(CASE WHEN t.tx_direction = 1 THEN t.tx_amount ELSE -t.tx_amount END) AS net
+FROM transactions t
+JOIN accounts a ON t.account_id = a.id
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
+WHERE (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
+  AND t.tx_date >= COALESCE($2::timestamptz, CURRENT_DATE - INTERVAL '12 months')
+  AND t.tx_date <= COALESCE($3::timestamptz, CURRENT_DATE)
+GROUP BY month
+ORDER BY month
+`
+
+type GetMonthlyComparisonForUserParams struct {
+	UserID uuid.UUID  `json:"user_id"`
+	Start  *time.Time `json:"start"`
+	End    *time.Time `json:"end"`
+}
+
+type GetMonthlyComparisonForUserRow struct {
+	Month    string `json:"month"`
+	Income   int64  `json:"income"`
+	Expenses int64  `json:"expenses"`
+	Net      int64  `json:"net"`
+}
+
+func (q *Queries) GetMonthlyComparisonForUser(ctx context.Context, arg GetMonthlyComparisonForUserParams) ([]GetMonthlyComparisonForUserRow, error) {
+	rows, err := q.db.Query(ctx, getMonthlyComparisonForUser, arg.UserID, arg.Start, arg.End)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMonthlyComparisonForUserRow
+	for rows.Next() {
+		var i GetMonthlyComparisonForUserRow
+		if err := rows.Scan(
+			&i.Month,
+			&i.Income,
+			&i.Expenses,
+			&i.Net,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTopCategoriesForUser = `-- name: GetTopCategoriesForUser :many
+SELECT
+  c.slug,
+  c.label,
+  c.color,
+  COUNT(t.id) AS transaction_count,
+  SUM(t.tx_amount) AS total_amount
+FROM transactions t
+JOIN categories c ON t.category_id = c.id
+JOIN accounts a ON t.account_id = a.id
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
+WHERE (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
+  AND t.tx_direction = 2  -- expenses only
+  AND ($2::timestamptz IS NULL OR t.tx_date >= $2::timestamptz)
+  AND ($3::timestamptz IS NULL OR t.tx_date <= $3::timestamptz)
+GROUP BY c.id, c.slug, c.label, c.color
+ORDER BY total_amount DESC
+LIMIT COALESCE($4::int, 10)
+`
+
+type GetTopCategoriesForUserParams struct {
+	UserID uuid.UUID  `json:"user_id"`
+	Start  *time.Time `json:"start"`
+	End    *time.Time `json:"end"`
+	Limit  *int32     `json:"limit"`
+}
+
+type GetTopCategoriesForUserRow struct {
+	Slug             string `json:"slug"`
+	Label            string `json:"label"`
+	Color            string `json:"color"`
+	TransactionCount int64  `json:"transaction_count"`
+	TotalAmount      int64  `json:"total_amount"`
+}
+
+func (q *Queries) GetTopCategoriesForUser(ctx context.Context, arg GetTopCategoriesForUserParams) ([]GetTopCategoriesForUserRow, error) {
+	rows, err := q.db.Query(ctx, getTopCategoriesForUser,
+		arg.UserID,
+		arg.Start,
+		arg.End,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTopCategoriesForUserRow
+	for rows.Next() {
+		var i GetTopCategoriesForUserRow
+		if err := rows.Scan(
+			&i.Slug,
+			&i.Label,
+			&i.Color,
+			&i.TransactionCount,
+			&i.TotalAmount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTopMerchantsForUser = `-- name: GetTopMerchantsForUser :many
+SELECT
+  t.merchant,
+  COUNT(t.id) AS transaction_count,
+  SUM(t.tx_amount) AS total_amount,
+  AVG(t.tx_amount) AS avg_amount
+FROM transactions t
+JOIN accounts a ON t.account_id = a.id
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
+WHERE (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
+  AND t.merchant IS NOT NULL
+  AND t.tx_direction = 2  -- expenses only
+  AND ($2::timestamptz IS NULL OR t.tx_date >= $2::timestamptz)
+  AND ($3::timestamptz IS NULL OR t.tx_date <= $3::timestamptz)
+GROUP BY t.merchant
+ORDER BY total_amount DESC
+LIMIT COALESCE($4::int, 10)
+`
+
+type GetTopMerchantsForUserParams struct {
+	UserID uuid.UUID  `json:"user_id"`
+	Start  *time.Time `json:"start"`
+	End    *time.Time `json:"end"`
+	Limit  *int32     `json:"limit"`
+}
+
+type GetTopMerchantsForUserRow struct {
+	Merchant         *string `json:"merchant"`
+	TransactionCount int64   `json:"transaction_count"`
+	TotalAmount      int64   `json:"total_amount"`
+	AvgAmount        float64 `json:"avg_amount"`
+}
+
+func (q *Queries) GetTopMerchantsForUser(ctx context.Context, arg GetTopMerchantsForUserParams) ([]GetTopMerchantsForUserRow, error) {
+	rows, err := q.db.Query(ctx, getTopMerchantsForUser,
+		arg.UserID,
+		arg.Start,
+		arg.End,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTopMerchantsForUserRow
+	for rows.Next() {
+		var i GetTopMerchantsForUserRow
+		if err := rows.Scan(
+			&i.Merchant,
+			&i.TransactionCount,
+			&i.TotalAmount,
+			&i.AvgAmount,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
