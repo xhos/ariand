@@ -1,8 +1,10 @@
 {pkgs, ...}: {
   packages = with pkgs; [
-    go-swag
-    protobuf
+    # grpc stuff
+    grpcurl
     buf
+
+    # sql stuff
     goose
     sqlc
   ];
@@ -25,12 +27,17 @@
     go test ./...
   '';
 
-  scripts.docs.exec = ''
-    swag init -g cmd/main.go
-  '';
-
   scripts.migrate.exec = ''
     goose -dir internal/db/migrations postgres "$DATABASE_URL" up
+  '';
+
+  scripts.bump-proto.exec = ''
+    git -C proto fetch origin
+    git -C proto checkout main
+    git -C proto pull --ff-only
+    git add proto
+    git commit -m "⬆️ bump proto files"
+    git push
   '';
 
   git-hooks.hooks = {

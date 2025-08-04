@@ -1,36 +1,22 @@
-// @title           Ariand API
-// @version         0.1.0
-// @description     backend for arian
-// @BasePath        /
-// @securityDefinitions.apikey BearerAuth
-// @in header
-// @name Authorization
-// @description Type "Bearer" followed by a space and a valid API key.
 package main
 
 import (
+	"ariand/internal/ai"
 	_ "ariand/internal/ai/gollm"
-	"ariand/internal/api/handlers"
-	"ariand/internal/api/middleware"
 	"ariand/internal/config"
-	"ariand/internal/db/postgres"
-	"ariand/internal/service"
-
+	"ariand/internal/db"
 	grpcServer "ariand/internal/grpc"
-	"net"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
-
+	"ariand/internal/service"
 	"context"
-	"errors"
-	"net/http"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/charmbracelet/log"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 func main() {
@@ -48,39 +34,26 @@ func main() {
 	})
 
 	// --- database ---
-	store, err := postgres.New(cfg.DatabaseURL)
+	store, err := db.New(cfg.DatabaseURL)
 	if err != nil {
 		logger.Fatal("database connection failed", "err", err)
 	}
 	defer store.Close()
 	logger.Info("database connection established")
 
+	// --- AI manager ---
+	aiManager := ai.GetManager()
+
 	// --- services ---
-	services := service.New(store, logger, &cfg)
-
-	// --- http server ---
-	router := handlers.SetupRoutes(services)
-
-	stack := middleware.CreateStack(
-		middleware.RequestID(),
-		middleware.Logging(logger.WithPrefix("http")),
-		middleware.CORS(),
-		middleware.Auth(logger.WithPrefix("auth"), cfg.APIKey),
-		middleware.RateLimit(),
-	)
-
-	server := &http.Server{
-		Addr:         cfg.Port,
-		Handler:      stack(router),
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
+	services, err := service.New(store, logger, &cfg, aiManager)
+	if err != nil {
+		logger.Fatal("Failed to create services", "error", err)
 	}
+	logger.Info("services initialized")
 
-	// --- start & graceful Shutdown ---
+	// start gRPC server
 	serverErrors := make(chan error, 1)
 
-	// --- gRPC server ---
 	go func() {
 		lis, err := net.Listen("tcp", cfg.GRPCPort)
 		if err != nil {
@@ -91,30 +64,18 @@ func main() {
 		s := grpc.NewServer()
 		grpcSrv := grpcServer.NewServer(services, logger.WithPrefix("grpc"))
 		grpcSrv.RegisterServices(s)
-
-		// Enable reflection for tools like Postman and grpcurl
 		reflection.Register(s)
 
 		logger.Info("gRPC server is listening", "addr", lis.Addr().String())
 		serverErrors <- s.Serve(lis)
 	}()
 
-	// start the HTTP server in a goroutine so it doesn't block
-	go func() {
-		logger.Info("http server is listening", "addr", server.Addr)
-		// serverErrors <- server.ListenAndServe()
-	}()
-
-	// channel to receive OS signals
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
-	// block until a signal or an error is received
 	select {
 	case err := <-serverErrors:
-		if !errors.Is(err, http.ErrServerClosed) {
-			logger.Fatal("server error", "err", err)
-		}
+		logger.Fatal("gRPC server error", "err", err)
 
 	case <-quit:
 		logger.Info("shutdown signal received")
@@ -122,13 +83,19 @@ func main() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if err := server.Shutdown(ctx); err != nil {
-			logger.Fatal("failed to gracefully shut down http server", "err", err)
-		}
-		logger.Info("http server shut down gracefully")
+		done := make(chan struct{})
+		go func() {
+			logger.Info("gRPC server stopping...")
+			close(done)
+		}()
 
-		// TODO: gRPC server's GracefulStop() in a separate goroutine
+		select {
+		case <-done:
+			logger.Info("gRPC server stopped gracefully")
+		case <-ctx.Done():
+			logger.Warn("gRPC server shutdown timed out")
+		}
 	}
 
-	logger.Info("all servers shut down")
+	logger.Info("server shutdown complete")
 }
