@@ -5,13 +5,14 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// Client is the interface for communicating with the parser
 type Client interface {
 	Parse(
 		ctx context.Context,
@@ -22,6 +23,7 @@ type Client interface {
 	) (*ariandv1.Receipt, error)
 
 	GetStatus(ctx context.Context) (*ariandv1.GetStatusResponse, error)
+	TestConnection(ctx context.Context) error
 }
 
 // grpcClient is the implementation of Client using gRPC
@@ -31,15 +33,20 @@ type grpcClient struct {
 }
 
 func New(address string, timeout time.Duration) (Client, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+	grpcAddress := address
+	if strings.HasPrefix(address, "http://") || strings.HasPrefix(address, "https://") {
+		u, err := url.Parse(address)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse receipt parser URL %s: %w", address, err)
+		}
+		grpcAddress = u.Host
+	}
 
-	conn, err := grpc.DialContext(ctx, address,
+	conn, err := grpc.NewClient(grpcAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to receipt parsing service at %s: %w", address, err)
+		return nil, fmt.Errorf("failed to create connection to receipt parsing service at %s: %w", grpcAddress, err)
 	}
 
 	client := ariandv1.NewReceiptParsingServiceClient(conn)
@@ -48,6 +55,11 @@ func New(address string, timeout time.Duration) (Client, error) {
 		client: client,
 		conn:   conn,
 	}, nil
+}
+
+func (c *grpcClient) TestConnection(ctx context.Context) error {
+	_, err := c.GetStatus(ctx)
+	return err
 }
 
 func (c *grpcClient) Close() error {
