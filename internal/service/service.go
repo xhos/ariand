@@ -3,7 +3,8 @@ package service
 import (
 	"ariand/internal/ai"
 	"ariand/internal/config"
-	sqlc "ariand/internal/db/sqlc"
+	"ariand/internal/db"
+	"ariand/internal/receiptparser"
 
 	"github.com/charmbracelet/log"
 )
@@ -18,17 +19,23 @@ type Services struct {
 	Auth         AuthService
 }
 
-func New(queries *sqlc.Queries, lg *log.Logger, cfg *config.Config, aiMgr *ai.Manager) *Services {
+func New(database *db.DB, lg *log.Logger, cfg *config.Config, aiMgr *ai.Manager) (*Services, error) {
+	queries := database.Queries
 	catSvc := newCatSvc(queries, lg.WithPrefix("cat"))
-	// parserClient := receiptparser.New(cfg.ReceiptParserURL, cfg.ReceiptParserTimeout)
+
+	// Initialize the gRPC receipt parser client
+	parserClient, err := receiptparser.New(cfg.ReceiptParserURL, cfg.ReceiptParserTimeout)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Services{
 		Transactions: newTxnSvc(queries, lg.WithPrefix("txn"), catSvc, aiMgr),
 		Categories:   catSvc,
 		Accounts:     newAcctSvc(queries, lg.WithPrefix("acct")),
 		Dashboard:    newDashSvc(queries),
-		Users:        newUserSvc(queries, lg.WithPrefix("user")),
+		Users:        newUserSvc(queries, database, lg.WithPrefix("user")), //TODO: WHY PASS DB?
 		Auth:         newAuthSvc(queries, lg.WithPrefix("auth")),
-		// Receipts:     newReceiptSvc(queries, parserClient, lg.WithPrefix("receipt")),
-	}
+		Receipts:     newReceiptSvc(queries, parserClient, lg.WithPrefix("receipt")),
+	}, nil
 }

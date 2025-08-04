@@ -4,6 +4,7 @@ import (
 	"ariand/internal/ai"
 	sqlc "ariand/internal/db/sqlc"
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,10 +12,16 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
+	"google.golang.org/genproto/googleapis/type/money"
+)
+
+const (
+	defaultAIProvider = "openai"
+	defaultAIModel    = "gpt-4o-mini"
+	maxDescQLength    = 100
 )
 
 type TransactionService interface {
-	// User-scoped operations
 	ListForUser(ctx context.Context, params sqlc.ListTransactionsForUserParams) ([]sqlc.ListTransactionsForUserRow, error)
 	GetForUser(ctx context.Context, params sqlc.GetTransactionForUserParams) (*sqlc.GetTransactionForUserRow, error)
 	CreateForUser(ctx context.Context, params sqlc.CreateTransactionForUserParams) (int64, error)
@@ -22,14 +29,14 @@ type TransactionService interface {
 	DeleteForUser(ctx context.Context, params sqlc.DeleteTransactionForUserParams) (int64, error)
 	BulkDeleteForUser(ctx context.Context, params sqlc.BulkDeleteTransactionsForUserParams) error
 	BulkCategorizeForUser(ctx context.Context, params sqlc.BulkCategorizeTransactionsForUserParams) error
-
-	// Analytics and search
 	GetTransactionCountByAccountForUser(ctx context.Context, userID uuid.UUID) ([]sqlc.GetTransactionCountByAccountForUserRow, error)
 	FindCandidateTransactionsForUser(ctx context.Context, params sqlc.FindCandidateTransactionsForUserParams) ([]sqlc.FindCandidateTransactionsForUserRow, error)
-
-	// AI-powered operations
+	SetTransactionReceipt(ctx context.Context, params sqlc.SetTransactionReceiptParams) error
 	CategorizeTransaction(ctx context.Context, userID uuid.UUID, txID int64) error
 	IdentifyMerchantForTransaction(ctx context.Context, userID uuid.UUID, txID int64) error
+	SearchTransactions(ctx context.Context, userID uuid.UUID, query string, accountID *int64, categoryID *int64, limit *int32, offset *int32) ([]sqlc.ListTransactionsForUserRow, error)
+	GetTransactionsByAccount(ctx context.Context, userID uuid.UUID, accountID int64, limit *int32, offset *int32) ([]sqlc.ListTransactionsForUserRow, error)
+	GetUncategorizedTransactions(ctx context.Context, userID uuid.UUID, accountID *int64, limit *int32, offset *int32) ([]sqlc.ListTransactionsForUserRow, error)
 }
 
 type txnSvc struct {
@@ -50,58 +57,120 @@ type categorizationResult struct {
 }
 
 func (s *txnSvc) ListForUser(ctx context.Context, params sqlc.ListTransactionsForUserParams) ([]sqlc.ListTransactionsForUserRow, error) {
-	return s.queries.ListTransactionsForUser(ctx, params)
+	if params.DescQ != nil && len(*params.DescQ) > maxDescQLength {
+		truncated := (*params.DescQ)[:maxDescQLength]
+		params.DescQ = &truncated
+	}
+
+	rows, err := s.queries.ListTransactionsForUser(ctx, params)
+	if err != nil {
+		return nil, wrapErr("TransactionService.ListForUser", err)
+	}
+
+	return rows, nil
 }
 
 func (s *txnSvc) GetForUser(ctx context.Context, params sqlc.GetTransactionForUserParams) (*sqlc.GetTransactionForUserRow, error) {
 	row, err := s.queries.GetTransactionForUser(ctx, params)
-	if err != nil {
-		return nil, err
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, wrapErr("TransactionService.GetForUser", ErrNotFound)
 	}
+
+	if err != nil {
+		return nil, wrapErr("TransactionService.GetForUser", err)
+	}
+
 	return &row, nil
 }
 
 func (s *txnSvc) CreateForUser(ctx context.Context, params sqlc.CreateTransactionForUserParams) (int64, error) {
 	if err := s.validateCreateParams(params); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("TransactionService.CreateForUser: %w", err)
 	}
-	return s.queries.CreateTransactionForUser(ctx, params)
+
+	id, err := s.queries.CreateTransactionForUser(ctx, params)
+	if err != nil {
+		return 0, wrapErr("TransactionService.CreateForUser", err)
+	}
+
+	return id, nil
 }
 
 func (s *txnSvc) Update(ctx context.Context, params sqlc.UpdateTransactionParams) error {
 	_, err := s.queries.UpdateTransaction(ctx, params)
-	return err
+	if errors.Is(err, sql.ErrNoRows) {
+		return wrapErr("TransactionService.Update", ErrNotFound)
+	}
+
+	if err != nil {
+		return wrapErr("TransactionService.Update", err)
+	}
+
+	return nil
 }
 
 func (s *txnSvc) DeleteForUser(ctx context.Context, params sqlc.DeleteTransactionForUserParams) (int64, error) {
-	return s.queries.DeleteTransactionForUser(ctx, params)
+	id, err := s.queries.DeleteTransactionForUser(ctx, params)
+	if err != nil {
+		return 0, wrapErr("TransactionService.DeleteForUser", err)
+	}
+	return id, nil
 }
 
 func (s *txnSvc) BulkDeleteForUser(ctx context.Context, params sqlc.BulkDeleteTransactionsForUserParams) error {
 	_, err := s.queries.BulkDeleteTransactionsForUser(ctx, params)
-	return err
+	if err != nil {
+		return wrapErr("TransactionService.BulkDeleteForUser", err)
+	}
+	return nil
 }
 
 func (s *txnSvc) BulkCategorizeForUser(ctx context.Context, params sqlc.BulkCategorizeTransactionsForUserParams) error {
 	_, err := s.queries.BulkCategorizeTransactionsForUser(ctx, params)
-	return err
+	if err != nil {
+		return wrapErr("TransactionService.BulkCategorizeForUser", err)
+	}
+	return nil
 }
 
 func (s *txnSvc) GetTransactionCountByAccountForUser(ctx context.Context, userID uuid.UUID) ([]sqlc.GetTransactionCountByAccountForUserRow, error) {
-	return s.queries.GetTransactionCountByAccountForUser(ctx, userID)
+	counts, err := s.queries.GetTransactionCountByAccountForUser(ctx, userID)
+	if err != nil {
+		return nil, wrapErr("TransactionService.GetTransactionCountByAccountForUser", err)
+	}
+	return counts, nil
 }
 
 func (s *txnSvc) FindCandidateTransactionsForUser(ctx context.Context, params sqlc.FindCandidateTransactionsForUserParams) ([]sqlc.FindCandidateTransactionsForUserRow, error) {
-	return s.queries.FindCandidateTransactionsForUser(ctx, params)
+	candidates, err := s.queries.FindCandidateTransactionsForUser(ctx, params)
+	if err != nil {
+		return nil, wrapErr("TransactionService.FindCandidateTransactionsForUser", err)
+	}
+	return candidates, nil
+}
+
+func (s *txnSvc) SetTransactionReceipt(ctx context.Context, params sqlc.SetTransactionReceiptParams) error {
+	_, err := s.queries.SetTransactionReceipt(ctx, params)
+	if err != nil {
+		return wrapErr("TransactionService.SetTransactionReceipt", err)
+	}
+	return nil
 }
 
 func (s *txnSvc) CategorizeTransaction(ctx context.Context, userID uuid.UUID, txID int64) error {
+	s.log.Info("CategorizeTransaction", "user", userID, "tx", txID, "method", "similarity")
+
 	tx, err := s.queries.GetTransactionForUser(ctx, sqlc.GetTransactionForUserParams{
 		UserID: userID,
 		ID:     txID,
 	})
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("transaction %d: %w", txID, ErrNotFound)
+	}
+
 	if err != nil {
-		return fmt.Errorf("getting transaction for categorization: %w", err)
+		return wrapErr("CategorizeTransaction.GetTransaction", err)
 	}
 
 	// Convert GetTransactionForUserRow to Transaction for determineCategory
@@ -126,60 +195,78 @@ func (s *txnSvc) CategorizeTransaction(ctx context.Context, userID uuid.UUID, tx
 
 	result, err := s.determineCategory(ctx, userID, txForCategory)
 	if err != nil {
-		return fmt.Errorf("determining category: %w", err)
+		return wrapErr("CategorizeTransaction.DetermineCategory", err)
 	}
 
-	var categoryID *int64
+	var categoryID *int64 // will be nil if no category found
 	if result.CategorySlug != "" {
 		category, err := s.catSvc.BySlug(ctx, result.CategorySlug)
 		if err != nil {
-			return fmt.Errorf("finding category by slug %s: %w", result.CategorySlug, err)
+			return wrapErr("CategorizeTransaction.FindCategoryBySlug", err)
 		}
 		categoryID = &category.ID
 	}
 
-	params := sqlc.UpdateTransactionParams{
+	// use atomic update - only succeeds if cat_status is still 0 (uncategorized)
+	params := sqlc.CategorizeTransactionAtomicParams{
 		ID:          txID,
 		UserID:      userID,
 		CategoryID:  categoryID,
-		CatStatus:   int16Ptr(2), // AI categorization status
+		CatStatus:   2, // AI categorization status
 		Suggestions: result.Suggestions,
 	}
 
-	_, err = s.queries.UpdateTransaction(ctx, params)
-	return err
+	updated, err := s.queries.CategorizeTransactionAtomic(ctx, params)
+	if errors.Is(err, sql.ErrNoRows) {
+		// transaction was already categorized by another request - that's OK
+		s.log.Info("Transaction already categorized", "tx", txID)
+		return nil
+	}
+	if err != nil {
+		return wrapErr("CategorizeTransaction.AtomicUpdate", err)
+	}
+
+	s.log.Info("Transaction categorized", "tx", updated.ID, "status", updated.CatStatus)
+	return nil
 }
 
 func (s *txnSvc) IdentifyMerchantForTransaction(ctx context.Context, userID uuid.UUID, txID int64) error {
+	s.log.Info("IdentifyMerchantForTransaction", "user", userID, "tx", txID)
+
 	tx, err := s.queries.GetTransactionForUser(ctx, sqlc.GetTransactionForUserParams{
 		UserID: userID,
 		ID:     txID,
 	})
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("transaction %d: %w", txID, ErrNotFound)
+	}
+
 	if err != nil {
-		return fmt.Errorf("getting transaction for merchant identification: %w", err)
+		return wrapErr("IdentifyMerchantForTransaction.GetTransaction", err)
 	}
 
 	if tx.TxDesc == nil || *tx.TxDesc == "" {
-		return errors.New("transaction has no description to analyze")
+		return fmt.Errorf("transaction has no description to analyze: %w", ErrValidation)
 	}
 
 	if s.aiMgr == nil {
-		return errors.New("AI manager not available")
+		return fmt.Errorf("AI manager not available: %w", ErrValidation)
 	}
 
-	// Get a provider from the manager (we could make this configurable)
-	provider, err := s.aiMgr.GetProvider("openai", "gpt-4o-mini") // or whatever default you want
+	// get a provider from the manager
+	provider, err := s.aiMgr.GetProvider(defaultAIProvider, defaultAIModel)
 	if err != nil {
-		return fmt.Errorf("getting AI provider: %w", err)
+		return wrapErr("IdentifyMerchantForTransaction.GetProvider", err)
 	}
 
 	merchant, err := provider.ExtractMerchant(ctx, *tx.TxDesc)
 	if err != nil {
-		return fmt.Errorf("extracting merchant: %w", err)
+		return wrapErr("IdentifyMerchantForTransaction.ExtractMerchant", err)
 	}
 
 	if merchant == "" {
-		return nil // No merchant identified
+		return nil // no merchant identified
 	}
 
 	params := sqlc.UpdateTransactionParams{
@@ -189,12 +276,12 @@ func (s *txnSvc) IdentifyMerchantForTransaction(ctx context.Context, userID uuid
 	}
 
 	_, err = s.queries.UpdateTransaction(ctx, params)
-	return err
+	return wrapErr("IdentifyMerchantForTransaction.UpdateTransaction", err)
 }
 
 // determineCategory analyzes a transaction to suggest a category
 func (s *txnSvc) determineCategory(ctx context.Context, userID uuid.UUID, tx *sqlc.Transaction) (*categorizationResult, error) {
-	// 1. Try similarity search (rule-based)
+	// 1. try similarity search (rule-based)
 	if tx.TxDesc != nil {
 		params := sqlc.ListTransactionsForUserParams{
 			UserID: userID,
@@ -220,19 +307,19 @@ func (s *txnSvc) determineCategory(ctx context.Context, userID uuid.UUID, tx *sq
 		}
 	}
 
-	// 2. Fallback to AI if available
+	// 2. fallback to AI if available
 	if s.aiMgr != nil {
-		provider, err := s.aiMgr.GetProvider("openai", "gpt-4o-mini")
+		provider, err := s.aiMgr.GetProvider(defaultAIProvider, defaultAIModel)
 		if err == nil {
 			s.log.Info("Falling back to AI for categorization", "txID", tx.ID)
 			slugs, err := s.catSvc.ListSlugs(ctx)
 			if err != nil {
-				return nil, fmt.Errorf("failed to list category slugs for AI: %w", err)
+				return nil, wrapErr("determineCategory.ListSlugs", err)
 			}
 
 			categorySlug, _, suggestions, err := provider.CategorizeTransaction(ctx, *tx, slugs)
 			if err != nil {
-				return nil, fmt.Errorf("AI categorization failed: %w", err)
+				return nil, wrapErr("determineCategory.CategorizeTransaction", err)
 			}
 
 			return &categorizationResult{
@@ -243,7 +330,7 @@ func (s *txnSvc) determineCategory(ctx context.Context, userID uuid.UUID, tx *sq
 		}
 	}
 
-	// 3. Return empty result if no AI available
+	// 3. return empty result if no AI available
 	return &categorizationResult{
 		CategorySlug: "",
 		Status:       "failed",
@@ -254,22 +341,20 @@ func (s *txnSvc) determineCategory(ctx context.Context, userID uuid.UUID, tx *sq
 // validateCreateParams validates transaction creation parameters
 func (s *txnSvc) validateCreateParams(params sqlc.CreateTransactionForUserParams) error {
 	if params.TxAmount.IsZero() {
-		return errors.New("tx_amount cannot be zero")
+		return fmt.Errorf("tx_amount cannot be zero: %w", ErrValidation)
 	}
+
 	switch params.TxDirection {
 	case 1, 2: // DIRECTION_INCOMING, DIRECTION_OUTGOING
 		// valid
 	default:
-		return errors.New("tx_direction must be 1 (DIRECTION_INCOMING) or 2 (DIRECTION_OUTGOING)")
+		return fmt.Errorf("tx_direction must be 1 (DIRECTION_INCOMING) or 2 (DIRECTION_OUTGOING): %w", ErrValidation)
 	}
+
 	return nil
 }
 
 func int32Ptr(i int32) *int32 {
-	return &i
-}
-
-func int16Ptr(i int16) *int16 {
 	return &i
 }
 
@@ -280,26 +365,79 @@ func similarity(a, b string) float64 {
 	for _, w := range aa {
 		set[w] = true
 	}
+
 	inter := 0
 	for _, w := range bb {
 		if set[w] {
 			inter++
 		}
 	}
+
 	union := len(aa) + len(bb) - inter
 	if union == 0 {
 		return 0
 	}
+
 	return float64(inter) / float64(union)
 }
 
-func amountClose(a, b decimal.Decimal, pct float64) bool {
-	if a.Equal(b) {
+func (s *txnSvc) SearchTransactions(ctx context.Context, userID uuid.UUID, query string, accountID *int64, categoryID *int64, limit *int32, offset *int32) ([]sqlc.ListTransactionsForUserRow, error) {
+	params := sqlc.ListTransactionsForUserParams{
+		UserID: userID,
+		DescQ:  &query,
+		Limit:  limit,
+	}
+	if accountID != nil {
+		params.AccountIds = []int64{*accountID}
+	}
+	return s.ListForUser(ctx, params)
+}
+
+func (s *txnSvc) GetTransactionsByAccount(ctx context.Context, userID uuid.UUID, accountID int64, limit *int32, offset *int32) ([]sqlc.ListTransactionsForUserRow, error) {
+	params := sqlc.ListTransactionsForUserParams{
+		UserID:     userID,
+		AccountIds: []int64{accountID},
+		Limit:      limit,
+	}
+	return s.ListForUser(ctx, params)
+}
+
+func (s *txnSvc) GetUncategorizedTransactions(ctx context.Context, userID uuid.UUID, accountID *int64, limit *int32, offset *int32) ([]sqlc.ListTransactionsForUserRow, error) {
+	params := sqlc.ListTransactionsForUserParams{
+		UserID:        userID,
+		Uncategorized: boolPtr(true),
+		Limit:         limit,
+	}
+	if accountID != nil {
+		params.AccountIds = []int64{*accountID}
+	}
+	return s.ListForUser(ctx, params)
+}
+
+func boolPtr(b bool) *bool {
+	return &b
+}
+
+func amountClose(a, b *money.Money, pct float64) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+
+	// Convert to the same currency if needed (for now, assume same currency)
+	if a.CurrencyCode != b.CurrencyCode {
+		return false
+	}
+
+	// Convert to decimal for comparison
+	aDecimal := decimal.NewFromInt(a.Units).Add(decimal.NewFromInt(int64(a.Nanos)).Div(decimal.NewFromInt(1e9)))
+	bDecimal := decimal.NewFromInt(b.Units).Add(decimal.NewFromInt(int64(b.Nanos)).Div(decimal.NewFromInt(1e9)))
+
+	if aDecimal.Equal(bDecimal) {
 		return true
 	}
 
-	diff := a.Sub(b).Abs()
-	max := decimal.Max(a.Abs(), b.Abs())
+	diff := aDecimal.Sub(bDecimal).Abs()
+	max := decimal.Max(aDecimal.Abs(), bDecimal.Abs())
 	threshold := max.Mul(decimal.NewFromFloat(pct))
 
 	return diff.LessThanOrEqual(threshold)

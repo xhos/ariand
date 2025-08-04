@@ -1,29 +1,15 @@
 package receiptparser
 
 import (
-	ariandv1 "ariand/gen/go/ariand/v1"
-	"bytes"
+	ariandv1 "ariand/gen/go/arian/v1"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
-	"mime/multipart"
-	"net/http"
-
 	"time"
-)
 
-// ParsedReceipt represents the  response from the parser microservice
-type ParsedReceipt struct {
-	Merchant string  `json:"merchant"`
-	Date     string  `json:"date"` // YYYY-MM-DD
-	Total    float64 `json:"total"`
-	Items    []struct {
-		Name  string  `json:"name"`
-		Price float64 `json:"price"`
-		Qty   float64 `json:"qty"`
-	} `json:"items"`
-}
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+)
 
 // Client is the interface for communicating with the parser
 type Client interface {
@@ -31,85 +17,81 @@ type Client interface {
 		ctx context.Context,
 		file io.Reader,
 		filename string,
-		provider ariandv1.ReceiptEngine,
-	) (
-		*ParsedReceipt,
-		[]byte, error,
+		contentType string,
+		engine *ariandv1.ReceiptEngine,
+	) (*ariandv1.Receipt, error)
+
+	GetStatus(ctx context.Context) (*ariandv1.GetStatusResponse, error)
+}
+
+// grpcClient is the implementation of Client using gRPC
+type grpcClient struct {
+	client ariandv1.ReceiptParsingServiceClient
+	conn   *grpc.ClientConn
+}
+
+func New(address string, timeout time.Duration) (Client, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	conn, err := grpc.DialContext(ctx, address,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
 	)
-}
-
-// parserClient is the implementation of Client
-type parserClient struct {
-	httpClient *http.Client
-	baseURL    string
-}
-
-func New(baseURL string, timeout time.Duration) Client {
-	return &parserClient{
-		httpClient: &http.Client{
-			Timeout: timeout,
-		},
-		baseURL: baseURL,
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to receipt parsing service at %s: %w", address, err)
 	}
+
+	client := ariandv1.NewReceiptParsingServiceClient(conn)
+
+	return &grpcClient{
+		client: client,
+		conn:   conn,
+	}, nil
 }
 
-// Parse sends an image file to the /parse endpoint and returns ParsedReceipt
-func (c *parserClient) Parse(
+func (c *grpcClient) Close() error {
+	return c.conn.Close()
+}
+
+// Parse sends an image to the gRPC service and returns the parsed receipt
+func (c *grpcClient) Parse(
 	ctx context.Context,
 	file io.Reader,
 	filename string,
-	provider ariandv1.ReceiptEngine,
-) (*ParsedReceipt, []byte, error) {
-
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-
-	// add the file to the request
-	part, err := writer.CreateFormFile("file", filename)
+	contentType string,
+	engine *ariandv1.ReceiptEngine,
+) (*ariandv1.Receipt, error) {
+	// Read the file data
+	imageData, err := io.ReadAll(file)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create form file: %w", err)
+		return nil, fmt.Errorf("failed to read image data: %w", err)
 	}
 
-	if _, err := io.Copy(part, file); err != nil {
-		return nil, nil, fmt.Errorf("failed to copy file to multipart buffer: %w", err)
+	// Create the gRPC request
+	req := &ariandv1.ParseImageRequest{
+		ImageData:   imageData,
+		ContentType: contentType,
+		Engine:      engine,
 	}
 
-	writer.Close()
-
-	// TODO: add support for that in the python code
-	if err := writer.WriteField("provider", string(provider)); err != nil {
-		return nil, nil, fmt.Errorf("failed to write provider field: %w", err)
-	}
-
-	// create and send the request
-	url := fmt.Sprintf("%s/parse", c.baseURL)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
+	// Call the gRPC service
+	resp, err := c.client.ParseImage(ctx, req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create parser request: %w", err)
+		return nil, fmt.Errorf("failed to parse image via gRPC: %w", err)
 	}
-	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	resp, err := c.httpClient.Do(req)
+	return resp.Receipt, nil
+}
+
+// GetStatus returns the status of available parsing providers
+func (c *grpcClient) GetStatus(ctx context.Context) (*ariandv1.GetStatusResponse, error) {
+	req := &ariandv1.GetStatusRequest{}
+
+	resp, err := c.client.GetStatus(ctx, req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("request to parser service at %s failed: %w", url, err)
-	}
-	defer resp.Body.Close()
-
-	// read the raw response
-	rawBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read parser response body: %w", err)
+		return nil, fmt.Errorf("failed to get status via gRPC: %w", err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, rawBody, fmt.Errorf("parser service returned non-OK status: %d. Body: %s", resp.StatusCode, string(rawBody))
-	}
-
-	// decode response itno JSON
-	var parsedData ParsedReceipt
-	if err := json.Unmarshal(rawBody, &parsedData); err != nil {
-		return nil, rawBody, fmt.Errorf("failed to decode parser JSON response: %w", err)
-	}
-
-	return &parsedData, rawBody, nil
+	return resp, nil
 }

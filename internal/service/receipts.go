@@ -1,21 +1,267 @@
 package service
 
 import (
-	ariandv1 "ariand/gen/go/ariand/v1"
 	sqlc "ariand/internal/db/sqlc"
+	"ariand/internal/receiptparser"
+	"bytes"
 	"context"
-	"io"
+	"database/sql"
+	"errors"
+
+	"github.com/charmbracelet/log"
+	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
+	"google.golang.org/genproto/googleapis/type/money"
 )
 
-// MatchResult represents a scored transaction candidate
-type MatchResult struct {
-	Tx    *sqlc.Transaction
-	Score float64
+// protoMoneyToMoney converts proto money to google.type.Money
+func protoMoneyToMoney(pm *money.Money) *money.Money {
+	if pm == nil {
+		return nil
+	}
+	return &money.Money{
+		CurrencyCode: pm.CurrencyCode,
+		Units:        pm.Units,
+		Nanos:        pm.Nanos,
+	}
 }
 
 type ReceiptService interface {
-	LinkManual(ctx context.Context, transactionID int64, file io.Reader, filename string, provider ariandv1.ReceiptEngine) (*sqlc.Receipt, error)
-	MatchAndSuggest(ctx context.Context, file io.Reader, filename string, provider ariandv1.ReceiptEngine) (*sqlc.Receipt, error)
+	ListForUser(ctx context.Context, userID uuid.UUID) ([]sqlc.Receipt, error)
+	GetForUser(ctx context.Context, params sqlc.GetReceiptForUserParams) (*sqlc.Receipt, error)
+	Create(ctx context.Context, params sqlc.CreateReceiptParams) (*sqlc.Receipt, error)
+	Update(ctx context.Context, params sqlc.UpdateReceiptParams) error
+	DeleteForUser(ctx context.Context, params sqlc.DeleteReceiptForUserParams) error
+
+	ListItemsForReceipt(ctx context.Context, receiptID int64) ([]sqlc.ReceiptItem, error)
+	GetItem(ctx context.Context, id int64) (*sqlc.ReceiptItem, error)
+	CreateItem(ctx context.Context, params sqlc.CreateReceiptItemParams) (*sqlc.ReceiptItem, error)
+	UpdateItem(ctx context.Context, params sqlc.UpdateReceiptItemParams) (*sqlc.ReceiptItem, error)
+	DeleteItem(ctx context.Context, id int64) error
+	BulkCreateItems(ctx context.Context, items []sqlc.BulkCreateReceiptItemsParams) error
+	DeleteItemsByReceipt(ctx context.Context, receiptID int64) error
+
+	GetUnlinked(ctx context.Context, limit *int32) ([]sqlc.GetUnlinkedReceiptsRow, error)
+	GetMatchCandidates(ctx context.Context) ([]sqlc.GetReceiptMatchCandidatesRow, error)
+
+	UploadReceipt(ctx context.Context, userID uuid.UUID, imageData []byte, provider string) (*sqlc.Receipt, error)
+	ParseReceipt(ctx context.Context, receiptID int64, provider string) (*sqlc.Receipt, error)
+	SearchReceipts(ctx context.Context, userID uuid.UUID, query string, limit *int32) ([]sqlc.Receipt, error)
+	GetReceiptsByTransaction(ctx context.Context, transactionID int64) ([]sqlc.Receipt, error)
+}
+
+type receiptSvc struct {
+	queries *sqlc.Queries
+	parser  receiptparser.Client
+	log     *log.Logger
+}
+
+func newReceiptSvc(queries *sqlc.Queries, parser receiptparser.Client, lg *log.Logger) ReceiptService {
+	return &receiptSvc{queries: queries, parser: parser, log: lg}
+}
+
+func (s *receiptSvc) ListForUser(ctx context.Context, userID uuid.UUID) ([]sqlc.Receipt, error) {
+	receipts, err := s.queries.ListReceiptsForUser(ctx, userID)
+	if err != nil {
+		return nil, wrapErr("ReceiptService.ListForUser", err)
+	}
+	return receipts, nil
+}
+
+func (s *receiptSvc) GetForUser(ctx context.Context, params sqlc.GetReceiptForUserParams) (*sqlc.Receipt, error) {
+	receipt, err := s.queries.GetReceiptForUser(ctx, params)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, wrapErr("ReceiptService.GetForUser", ErrNotFound)
+	}
+	if err != nil {
+		return nil, wrapErr("ReceiptService.GetForUser", err)
+	}
+	return &receipt, nil
+}
+
+func (s *receiptSvc) Create(ctx context.Context, params sqlc.CreateReceiptParams) (*sqlc.Receipt, error) {
+	receipt, err := s.queries.CreateReceipt(ctx, params)
+	if err != nil {
+		return nil, wrapErr("ReceiptService.Create", err)
+	}
+	return &receipt, nil
+}
+
+func (s *receiptSvc) Update(ctx context.Context, params sqlc.UpdateReceiptParams) error {
+	_, err := s.queries.UpdateReceipt(ctx, params)
+	if err != nil {
+		return wrapErr("ReceiptService.Update", err)
+	}
+	return nil
+}
+
+func (s *receiptSvc) DeleteForUser(ctx context.Context, params sqlc.DeleteReceiptForUserParams) error {
+	_, err := s.queries.DeleteReceiptForUser(ctx, params)
+	if err != nil {
+		return wrapErr("ReceiptService.DeleteForUser", err)
+	}
+	return nil
+}
+
+func (s *receiptSvc) ListItemsForReceipt(ctx context.Context, receiptID int64) ([]sqlc.ReceiptItem, error) {
+	items, err := s.queries.ListReceiptItemsForReceipt(ctx, receiptID)
+	if err != nil {
+		return nil, wrapErr("ReceiptService.ListItemsForReceipt", err)
+	}
+	return items, nil
+}
+
+func (s *receiptSvc) GetItem(ctx context.Context, id int64) (*sqlc.ReceiptItem, error) {
+	item, err := s.queries.GetReceiptItem(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, wrapErr("ReceiptService.GetItem", ErrNotFound)
+	}
+	if err != nil {
+		return nil, wrapErr("ReceiptService.GetItem", err)
+	}
+	return &item, nil
+}
+
+func (s *receiptSvc) CreateItem(ctx context.Context, params sqlc.CreateReceiptItemParams) (*sqlc.ReceiptItem, error) {
+	item, err := s.queries.CreateReceiptItem(ctx, params)
+	if err != nil {
+		return nil, wrapErr("ReceiptService.CreateItem", err)
+	}
+	return &item, nil
+}
+
+func (s *receiptSvc) UpdateItem(ctx context.Context, params sqlc.UpdateReceiptItemParams) (*sqlc.ReceiptItem, error) {
+	item, err := s.queries.UpdateReceiptItem(ctx, params)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, wrapErr("ReceiptService.UpdateItem", ErrNotFound)
+	}
+	if err != nil {
+		return nil, wrapErr("ReceiptService.UpdateItem", err)
+	}
+	return &item, nil
+}
+
+func (s *receiptSvc) DeleteItem(ctx context.Context, id int64) error {
+	_, err := s.queries.DeleteReceiptItem(ctx, id)
+	if err != nil {
+		return wrapErr("ReceiptService.DeleteItem", err)
+	}
+	return nil
+}
+
+func (s *receiptSvc) BulkCreateItems(ctx context.Context, items []sqlc.BulkCreateReceiptItemsParams) error {
+	_, err := s.queries.BulkCreateReceiptItems(ctx, items)
+	if err != nil {
+		return wrapErr("ReceiptService.BulkCreateItems", err)
+	}
+	return nil
+}
+
+func (s *receiptSvc) DeleteItemsByReceipt(ctx context.Context, receiptID int64) error {
+	_, err := s.queries.DeleteReceiptItemsByReceipt(ctx, receiptID)
+	if err != nil {
+		return wrapErr("ReceiptService.DeleteItemsByReceipt", err)
+	}
+	return nil
+}
+
+func (s *receiptSvc) GetUnlinked(ctx context.Context, limit *int32) ([]sqlc.GetUnlinkedReceiptsRow, error) {
+	receipts, err := s.queries.GetUnlinkedReceipts(ctx, limit)
+	if err != nil {
+		return nil, wrapErr("ReceiptService.GetUnlinked", err)
+	}
+	return receipts, nil
+}
+
+func (s *receiptSvc) GetMatchCandidates(ctx context.Context) ([]sqlc.GetReceiptMatchCandidatesRow, error) {
+	candidates, err := s.queries.GetReceiptMatchCandidates(ctx)
+	if err != nil {
+		return nil, wrapErr("ReceiptService.GetMatchCandidates", err)
+	}
+	return candidates, nil
+}
+
+func (s *receiptSvc) UploadReceipt(ctx context.Context, userID uuid.UUID, imageData []byte, provider string) (*sqlc.Receipt, error) {
+	// Parse the receipt using the gRPC service
+	parsedReceipt, err := s.parser.Parse(ctx,
+		bytes.NewReader(imageData),
+		"receipt.jpg", // filename - could be passed as parameter
+		"image/jpeg",  // content type - could be detected or passed as parameter
+		nil,           // engine - could be passed as parameter
+	)
+	if err != nil {
+		s.log.Warn("failed to parse receipt", "error", err)
+		// Continue with creating the receipt even if parsing fails
+	}
+
+	// Create receipt record
+	parseStatus := int16(1) // Pending
+	linkStatus := int16(1)  // Unlinked
+
+	params := sqlc.CreateReceiptParams{
+		Engine:      1, // Default engine
+		ParseStatus: &parseStatus,
+		LinkStatus:  &linkStatus,
+	}
+
+	if parsedReceipt != nil {
+		successStatus := int16(2) // Success
+		params.ParseStatus = &successStatus
+
+		if parsedReceipt.Merchant != nil && *parsedReceipt.Merchant != "" {
+			params.Merchant = parsedReceipt.Merchant
+		}
+
+		if parsedReceipt.TotalAmount != nil {
+			// Convert money to decimal for the parameter (SQLC param types aren't mapped)
+			totalAmountDecimal := decimal.NewFromFloat(float64(parsedReceipt.TotalAmount.Units) + float64(parsedReceipt.TotalAmount.Nanos)/1e9)
+			params.TotalAmount = &totalAmountDecimal
+			params.Currency = &parsedReceipt.TotalAmount.CurrencyCode
+		}
+		// Parse date if provided
+		// TODO: Parse purchase date from receipt
+	}
+
+	receipt, err := s.queries.CreateReceipt(ctx, params)
+	if err != nil {
+		return nil, wrapErr("ReceiptService.UploadReceipt", err)
+	}
+
+	// Create receipt items if parsed successfully
+	if parsedReceipt != nil && len(parsedReceipt.Items) > 0 {
+		var itemParams []sqlc.BulkCreateReceiptItemsParams
+		for i, item := range parsedReceipt.Items {
+			qtyDecimal := decimal.NewFromFloat(item.Quantity)
+			lineNo := int32(i + 1)
+
+			itemParams = append(itemParams, sqlc.BulkCreateReceiptItemsParams{
+				ReceiptID: receipt.ID,
+				LineNo:    &lineNo,
+				Name:      item.Name,
+				Qty:       &qtyDecimal,
+				UnitPrice: item.UnitPrice,
+				LineTotal: item.LineTotal,
+			})
+		}
+
+		if err := s.BulkCreateItems(ctx, itemParams); err != nil {
+			s.log.Warn("failed to create receipt items", "error", err)
+		}
+	}
+
+	return &receipt, nil
+}
+
+func (s *receiptSvc) ParseReceipt(ctx context.Context, receiptID int64, provider string) (*sqlc.Receipt, error) {
+	return nil, wrapErr("ReceiptService.ParseReceipt", ErrUnimplemented)
+}
+
+func (s *receiptSvc) SearchReceipts(ctx context.Context, userID uuid.UUID, query string, limit *int32) ([]sqlc.Receipt, error) {
+	return nil, wrapErr("ReceiptService.SearchReceipts", ErrUnimplemented)
+}
+
+func (s *receiptSvc) GetReceiptsByTransaction(ctx context.Context, transactionID int64) ([]sqlc.Receipt, error) {
+	return nil, wrapErr("ReceiptService.GetReceiptsByTransaction", ErrUnimplemented)
 }
 
 // type receiptSvc struct {

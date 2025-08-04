@@ -1,8 +1,12 @@
 package service
 
 import (
+	"ariand/internal/db"
 	sqlc "ariand/internal/db/sqlc"
 	"context"
+	"database/sql"
+	"errors"
+	"strings"
 
 	"github.com/charmbracelet/log"
 	"github.com/google/uuid"
@@ -21,62 +25,135 @@ type UserService interface {
 
 type userSvc struct {
 	queries *sqlc.Queries
+	db      *db.DB
 	log     *log.Logger
 }
 
-func newUserSvc(queries *sqlc.Queries, lg *log.Logger) UserService {
-	return &userSvc{queries: queries, log: lg}
+func newUserSvc(queries *sqlc.Queries, database *db.DB, lg *log.Logger) UserService {
+	return &userSvc{queries: queries, db: database, log: lg}
 }
 
 func (s *userSvc) Get(ctx context.Context, id uuid.UUID) (*sqlc.User, error) {
 	user, err := s.queries.GetUser(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, wrapErr("UserService.Get", ErrNotFound)
+	}
 	if err != nil {
-		return nil, err
+		return nil, wrapErr("UserService.Get", err)
 	}
 	return &user, nil
 }
 
 func (s *userSvc) GetByEmail(ctx context.Context, email string) (*sqlc.User, error) {
-	user, err := s.queries.GetUserByEmail(ctx, email)
-	if err != nil {
-		return nil, err
+	user, err := s.queries.GetUserByEmail(ctx, strings.ToLower(email))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, wrapErr("UserService.GetByEmail", ErrNotFound)
 	}
+
+	if err != nil {
+		return nil, wrapErr("UserService.GetByEmail", err)
+	}
+
 	return &user, nil
 }
 
 func (s *userSvc) Create(ctx context.Context, params sqlc.CreateUserParams) (*sqlc.User, error) {
+	params.Email = strings.ToLower(params.Email)
+
 	user, err := s.queries.CreateUser(ctx, params)
 	if err != nil {
-		return nil, err
+		return nil, wrapErr("UserService.Create", err)
 	}
+
 	return &user, nil
 }
 
 func (s *userSvc) Update(ctx context.Context, params sqlc.UpdateUserParams) (*sqlc.User, error) {
-	user, err := s.queries.UpdateUser(ctx, params)
-	if err != nil {
-		return nil, err
+	if params.Email != nil {
+		normalized := strings.ToLower(*params.Email)
+		params.Email = &normalized
 	}
+
+	user, err := s.queries.UpdateUser(ctx, params)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, wrapErr("UserService.Update", ErrNotFound)
+	}
+
+	if err != nil {
+		return nil, wrapErr("UserService.Update", err)
+	}
+
 	return &user, nil
 }
 
 func (s *userSvc) UpdateDisplayName(ctx context.Context, params sqlc.UpdateUserDisplayNameParams) (*sqlc.User, error) {
 	user, err := s.queries.UpdateUserDisplayName(ctx, params)
-	if err != nil {
-		return nil, err
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, wrapErr("UserService.UpdateDisplayName", ErrNotFound)
 	}
+
+	if err != nil {
+		return nil, wrapErr("UserService.UpdateDisplayName", err)
+	}
+
 	return &user, nil
 }
 
+// TODO: Ensure deleting user that is a collab on some accounts doesnt delete the account
 func (s *userSvc) Delete(ctx context.Context, id uuid.UUID) error {
-	_, err := s.queries.DeleteUser(ctx, id)
-	return err
+
+	// use transaction for cascade delete
+	tx, err := s.db.Pool().Begin(ctx)
+	if err != nil {
+		return wrapErr("UserService.Delete", err)
+	}
+	defer tx.Rollback(ctx)
+
+	txQueries := s.queries.WithTx(tx)
+
+	// delete credentials first
+	_, err = txQueries.DeleteAllCredentialsForUser(ctx, id)
+	if err != nil {
+		return wrapErr("UserService.Delete.DeleteCredentials", err)
+	}
+
+	// remove from all accounts
+	_, err = txQueries.RemoveUserFromAllAccounts(ctx, id)
+	if err != nil {
+		return wrapErr("UserService.Delete.RemoveFromAccounts", err)
+	}
+
+	// delete user
+	_, err = txQueries.DeleteUser(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return wrapErr("UserService.Delete", ErrNotFound)
+	}
+
+	if err != nil {
+		return wrapErr("UserService.Delete", err)
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return wrapErr("UserService.Delete.Commit", err)
+	}
+
+	s.log.Info("User deleted with cascade", "user_id", id)
+
+	return nil
 }
 
 func (s *userSvc) List(ctx context.Context) ([]sqlc.User, error) {
-	return s.queries.ListUsers(ctx)
+	users, err := s.queries.ListUsers(ctx)
+	if err != nil {
+		return nil, wrapErr("UserService.List", err)
+	}
+	return users, nil
 }
 
 func (s *userSvc) Exists(ctx context.Context, id uuid.UUID) (bool, error) {
-	return s.queries.CheckUserExists(ctx, id)
+	exists, err := s.queries.CheckUserExists(ctx, id)
+	if err != nil {
+		return false, wrapErr("UserService.Exists", err)
+	}
+	return exists, nil
 }
