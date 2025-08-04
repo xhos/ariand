@@ -7,10 +7,10 @@ package sqlcdb
 
 import (
 	"context"
-	"time"
 
-	ariand "ariand/gen/go/ariand/v1"
+	arian "ariand/gen/go/arian/v1"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const getAccountBalancesForUser = `-- name: GetAccountBalancesForUser :many
@@ -38,11 +38,11 @@ ORDER BY current_balance DESC
 `
 
 type GetAccountBalancesForUserRow struct {
-	ID             int64              `json:"id"`
-	Name           string             `json:"name"`
-	AccountType    ariand.AccountType `json:"account_type"`
-	CurrentBalance int32              `json:"current_balance"`
-	Currency       string             `json:"currency"`
+	ID             int64             `json:"id"`
+	Name           string            `json:"name"`
+	AccountType    arian.AccountType `json:"account_type"`
+	CurrentBalance int32             `json:"current_balance"`
+	Currency       string            `json:"currency"`
 }
 
 func (q *Queries) GetAccountBalancesForUser(ctx context.Context, userID uuid.UUID) ([]GetAccountBalancesForUserRow, error) {
@@ -71,55 +71,56 @@ func (q *Queries) GetAccountBalancesForUser(ctx context.Context, userID uuid.UUI
 	return items, nil
 }
 
-const getDashboardBalanceForUser = `-- name: GetDashboardBalanceForUser :one
-SELECT COALESCE(SUM(a.anchor_balance + COALESCE(d.delta, 0)), 0)::double precision AS total_balance
+const getDashboardSummaryForAccount = `-- name: GetDashboardSummaryForAccount :one
+SELECT
+  COUNT(DISTINCT a.id) AS total_accounts,
+  COUNT(t.id) AS total_transactions,
+  COALESCE(SUM(CASE WHEN t.tx_direction = 1 THEN t.tx_amount ELSE 0 END), 0) AS total_income,
+  COALESCE(SUM(CASE WHEN t.tx_direction = 2 THEN t.tx_amount ELSE 0 END), 0) AS total_expenses,
+  COUNT(DISTINCT CASE WHEN t.tx_date >= CURRENT_DATE - INTERVAL '30 days' THEN t.id END) AS transactions_last_30_days,
+  COUNT(DISTINCT CASE WHEN t.category_id IS NULL THEN t.id END) AS uncategorized_transactions
 FROM accounts a
 LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
-LEFT JOIN LATERAL (
-  SELECT SUM(
-    CASE
-      WHEN t.tx_direction = 1 THEN t.tx_amount
-      WHEN t.tx_direction = 2 THEN -t.tx_amount
-    END
-  ) AS delta
-  FROM transactions t
-  WHERE t.account_id = a.id
-    AND t.tx_date > a.anchor_date
-) d ON TRUE
+LEFT JOIN transactions t ON a.id = t.account_id
 WHERE (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
+  AND a.id = $2::bigint
+  AND ($3::timestamptz IS NULL OR t.tx_date >= $3::timestamptz)
+  AND ($4::timestamptz IS NULL OR t.tx_date <= $4::timestamptz)
 `
 
-func (q *Queries) GetDashboardBalanceForUser(ctx context.Context, userID uuid.UUID) (float64, error) {
-	row := q.db.QueryRow(ctx, getDashboardBalanceForUser, userID)
-	var total_balance float64
-	err := row.Scan(&total_balance)
-	return total_balance, err
+type GetDashboardSummaryForAccountParams struct {
+	UserID    uuid.UUID              `json:"user_id"`
+	AccountID int64                  `json:"account_id"`
+	Start     *timestamppb.Timestamp `json:"start"`
+	End       *timestamppb.Timestamp `json:"end"`
 }
 
-const getDashboardDebtForUser = `-- name: GetDashboardDebtForUser :one
-SELECT COALESCE(SUM(a.anchor_balance + COALESCE(d.delta, 0)), 0)::double precision AS total_debt
-FROM accounts a
-LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
-LEFT JOIN LATERAL (
-  SELECT SUM(
-    CASE
-      WHEN t.tx_direction = 1 THEN t.tx_amount
-      WHEN t.tx_direction = 2 THEN -t.tx_amount
-    END
-  ) AS delta
-  FROM transactions t
-  WHERE t.account_id = a.id
-    AND t.tx_date > a.anchor_date
-) d ON TRUE
-WHERE (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
-  AND a.account_type = 3
-`
+type GetDashboardSummaryForAccountRow struct {
+	TotalAccounts             int64       `json:"total_accounts"`
+	TotalTransactions         int64       `json:"total_transactions"`
+	TotalIncome               interface{} `json:"total_income"`
+	TotalExpenses             interface{} `json:"total_expenses"`
+	TransactionsLast30Days    int64       `json:"transactions_last_30_days"`
+	UncategorizedTransactions int64       `json:"uncategorized_transactions"`
+}
 
-func (q *Queries) GetDashboardDebtForUser(ctx context.Context, userID uuid.UUID) (float64, error) {
-	row := q.db.QueryRow(ctx, getDashboardDebtForUser, userID)
-	var total_debt float64
-	err := row.Scan(&total_debt)
-	return total_debt, err
+func (q *Queries) GetDashboardSummaryForAccount(ctx context.Context, arg GetDashboardSummaryForAccountParams) (GetDashboardSummaryForAccountRow, error) {
+	row := q.db.QueryRow(ctx, getDashboardSummaryForAccount,
+		arg.UserID,
+		arg.AccountID,
+		arg.Start,
+		arg.End,
+	)
+	var i GetDashboardSummaryForAccountRow
+	err := row.Scan(
+		&i.TotalAccounts,
+		&i.TotalTransactions,
+		&i.TotalIncome,
+		&i.TotalExpenses,
+		&i.TransactionsLast30Days,
+		&i.UncategorizedTransactions,
+	)
+	return i, err
 }
 
 const getDashboardSummaryForUser = `-- name: GetDashboardSummaryForUser :one
@@ -139,9 +140,9 @@ WHERE (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
 `
 
 type GetDashboardSummaryForUserParams struct {
-	UserID uuid.UUID  `json:"user_id"`
-	Start  *time.Time `json:"start"`
-	End    *time.Time `json:"end"`
+	UserID uuid.UUID              `json:"user_id"`
+	Start  *timestamppb.Timestamp `json:"start"`
+	End    *timestamppb.Timestamp `json:"end"`
 }
 
 type GetDashboardSummaryForUserRow struct {
@@ -167,8 +168,61 @@ func (q *Queries) GetDashboardSummaryForUser(ctx context.Context, arg GetDashboa
 	return i, err
 }
 
-const getDashboardTrendsForUser = `-- name: GetDashboardTrendsForUser :many
+const getDashboardTrendsForAccount = `-- name: GetDashboardTrendsForAccount :many
+SELECT
+  to_char(t.tx_date::date, 'YYYY-MM-DD') AS date,
+  SUM(CASE WHEN t.tx_direction = 1 THEN t.tx_amount ELSE 0 END) AS income,
+  SUM(CASE WHEN t.tx_direction = 2 THEN t.tx_amount ELSE 0 END) AS expenses
+FROM transactions t
+JOIN accounts a ON t.account_id = a.id
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
+WHERE (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
+  AND a.id = $2::bigint
+  AND ($3::timestamptz IS NULL OR t.tx_date >= $3::timestamptz)
+  AND ($4::timestamptz IS NULL OR t.tx_date <= $4::timestamptz)
+GROUP BY date
+ORDER BY date
+`
 
+type GetDashboardTrendsForAccountParams struct {
+	UserID    uuid.UUID              `json:"user_id"`
+	AccountID int64                  `json:"account_id"`
+	Start     *timestamppb.Timestamp `json:"start"`
+	End       *timestamppb.Timestamp `json:"end"`
+}
+
+type GetDashboardTrendsForAccountRow struct {
+	Date     string `json:"date"`
+	Income   int64  `json:"income"`
+	Expenses int64  `json:"expenses"`
+}
+
+func (q *Queries) GetDashboardTrendsForAccount(ctx context.Context, arg GetDashboardTrendsForAccountParams) ([]GetDashboardTrendsForAccountRow, error) {
+	rows, err := q.db.Query(ctx, getDashboardTrendsForAccount,
+		arg.UserID,
+		arg.AccountID,
+		arg.Start,
+		arg.End,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetDashboardTrendsForAccountRow
+	for rows.Next() {
+		var i GetDashboardTrendsForAccountRow
+		if err := rows.Scan(&i.Date, &i.Income, &i.Expenses); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getDashboardTrendsForUser = `-- name: GetDashboardTrendsForUser :many
 SELECT
   to_char(t.tx_date::date, 'YYYY-MM-DD') AS date,
   SUM(CASE WHEN t.tx_direction = 1 THEN t.tx_amount ELSE 0 END) AS income,
@@ -184,9 +238,9 @@ ORDER BY date
 `
 
 type GetDashboardTrendsForUserParams struct {
-	UserID uuid.UUID  `json:"user_id"`
-	Start  *time.Time `json:"start"`
-	End    *time.Time `json:"end"`
+	UserID uuid.UUID              `json:"user_id"`
+	Start  *timestamppb.Timestamp `json:"start"`
+	End    *timestamppb.Timestamp `json:"end"`
 }
 
 type GetDashboardTrendsForUserRow struct {
@@ -195,7 +249,6 @@ type GetDashboardTrendsForUserRow struct {
 	Expenses int64  `json:"expenses"`
 }
 
-// credit card accounts
 func (q *Queries) GetDashboardTrendsForUser(ctx context.Context, arg GetDashboardTrendsForUserParams) ([]GetDashboardTrendsForUserRow, error) {
 	rows, err := q.db.Query(ctx, getDashboardTrendsForUser, arg.UserID, arg.Start, arg.End)
 	if err != nil {
@@ -233,9 +286,9 @@ ORDER BY month
 `
 
 type GetMonthlyComparisonForUserParams struct {
-	UserID uuid.UUID  `json:"user_id"`
-	Start  *time.Time `json:"start"`
-	End    *time.Time `json:"end"`
+	UserID uuid.UUID              `json:"user_id"`
+	Start  *timestamppb.Timestamp `json:"start"`
+	End    *timestamppb.Timestamp `json:"end"`
 }
 
 type GetMonthlyComparisonForUserRow struct {
@@ -291,10 +344,10 @@ LIMIT COALESCE($4::int, 10)
 `
 
 type GetTopCategoriesForUserParams struct {
-	UserID uuid.UUID  `json:"user_id"`
-	Start  *time.Time `json:"start"`
-	End    *time.Time `json:"end"`
-	Limit  *int32     `json:"limit"`
+	UserID uuid.UUID              `json:"user_id"`
+	Start  *timestamppb.Timestamp `json:"start"`
+	End    *timestamppb.Timestamp `json:"end"`
+	Limit  *int32                 `json:"limit"`
 }
 
 type GetTopCategoriesForUserRow struct {
@@ -356,10 +409,10 @@ LIMIT COALESCE($4::int, 10)
 `
 
 type GetTopMerchantsForUserParams struct {
-	UserID uuid.UUID  `json:"user_id"`
-	Start  *time.Time `json:"start"`
-	End    *time.Time `json:"end"`
-	Limit  *int32     `json:"limit"`
+	UserID uuid.UUID              `json:"user_id"`
+	Start  *timestamppb.Timestamp `json:"start"`
+	End    *timestamppb.Timestamp `json:"end"`
+	Limit  *int32                 `json:"limit"`
 }
 
 type GetTopMerchantsForUserRow struct {

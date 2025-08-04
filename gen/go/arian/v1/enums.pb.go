@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        (unknown)
-// source: ariand/v1/enums.proto
+// source: arian/v1/enums.proto
 
 package ariandv1
 
@@ -64,11 +64,11 @@ func (x AccountType) String() string {
 }
 
 func (AccountType) Descriptor() protoreflect.EnumDescriptor {
-	return file_ariand_v1_enums_proto_enumTypes[0].Descriptor()
+	return file_arian_v1_enums_proto_enumTypes[0].Descriptor()
 }
 
 func (AccountType) Type() protoreflect.EnumType {
-	return &file_ariand_v1_enums_proto_enumTypes[0]
+	return &file_arian_v1_enums_proto_enumTypes[0]
 }
 
 func (x AccountType) Number() protoreflect.EnumNumber {
@@ -77,7 +77,7 @@ func (x AccountType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AccountType.Descriptor instead.
 func (AccountType) EnumDescriptor() ([]byte, []int) {
-	return file_ariand_v1_enums_proto_rawDescGZIP(), []int{0}
+	return file_arian_v1_enums_proto_rawDescGZIP(), []int{0}
 }
 
 // Transaction flow direction
@@ -114,11 +114,11 @@ func (x TransactionDirection) String() string {
 }
 
 func (TransactionDirection) Descriptor() protoreflect.EnumDescriptor {
-	return file_ariand_v1_enums_proto_enumTypes[1].Descriptor()
+	return file_arian_v1_enums_proto_enumTypes[1].Descriptor()
 }
 
 func (TransactionDirection) Type() protoreflect.EnumType {
-	return &file_ariand_v1_enums_proto_enumTypes[1]
+	return &file_arian_v1_enums_proto_enumTypes[1]
 }
 
 func (x TransactionDirection) Number() protoreflect.EnumNumber {
@@ -127,7 +127,7 @@ func (x TransactionDirection) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use TransactionDirection.Descriptor instead.
 func (TransactionDirection) EnumDescriptor() ([]byte, []int) {
-	return file_ariand_v1_enums_proto_rawDescGZIP(), []int{1}
+	return file_arian_v1_enums_proto_rawDescGZIP(), []int{1}
 }
 
 // How a transaction was categorized
@@ -170,11 +170,11 @@ func (x CategorizationStatus) String() string {
 }
 
 func (CategorizationStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_ariand_v1_enums_proto_enumTypes[2].Descriptor()
+	return file_arian_v1_enums_proto_enumTypes[2].Descriptor()
 }
 
 func (CategorizationStatus) Type() protoreflect.EnumType {
-	return &file_ariand_v1_enums_proto_enumTypes[2]
+	return &file_arian_v1_enums_proto_enumTypes[2]
 }
 
 func (x CategorizationStatus) Number() protoreflect.EnumNumber {
@@ -183,7 +183,7 @@ func (x CategorizationStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CategorizationStatus.Descriptor instead.
 func (CategorizationStatus) EnumDescriptor() ([]byte, []int) {
-	return file_ariand_v1_enums_proto_rawDescGZIP(), []int{2}
+	return file_arian_v1_enums_proto_rawDescGZIP(), []int{2}
 }
 
 // Receipt parsing engine
@@ -220,11 +220,11 @@ func (x ReceiptEngine) String() string {
 }
 
 func (ReceiptEngine) Descriptor() protoreflect.EnumDescriptor {
-	return file_ariand_v1_enums_proto_enumTypes[3].Descriptor()
+	return file_arian_v1_enums_proto_enumTypes[3].Descriptor()
 }
 
 func (ReceiptEngine) Type() protoreflect.EnumType {
-	return &file_ariand_v1_enums_proto_enumTypes[3]
+	return &file_arian_v1_enums_proto_enumTypes[3]
 }
 
 func (x ReceiptEngine) Number() protoreflect.EnumNumber {
@@ -233,7 +233,7 @@ func (x ReceiptEngine) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ReceiptEngine.Descriptor instead.
 func (ReceiptEngine) EnumDescriptor() ([]byte, []int) {
-	return file_ariand_v1_enums_proto_rawDescGZIP(), []int{3}
+	return file_arian_v1_enums_proto_rawDescGZIP(), []int{3}
 }
 
 // Receipt parsing status
@@ -273,11 +273,11 @@ func (x ReceiptParseStatus) String() string {
 }
 
 func (ReceiptParseStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_ariand_v1_enums_proto_enumTypes[4].Descriptor()
+	return file_arian_v1_enums_proto_enumTypes[4].Descriptor()
 }
 
 func (ReceiptParseStatus) Type() protoreflect.EnumType {
-	return &file_ariand_v1_enums_proto_enumTypes[4]
+	return &file_arian_v1_enums_proto_enumTypes[4]
 }
 
 func (x ReceiptParseStatus) Number() protoreflect.EnumNumber {
@@ -286,7 +286,7 @@ func (x ReceiptParseStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ReceiptParseStatus.Descriptor instead.
 func (ReceiptParseStatus) EnumDescriptor() ([]byte, []int) {
-	return file_ariand_v1_enums_proto_rawDescGZIP(), []int{4}
+	return file_arian_v1_enums_proto_rawDescGZIP(), []int{4}
 }
 
 // Receipt linking status
@@ -326,11 +326,11 @@ func (x ReceiptLinkStatus) String() string {
 }
 
 func (ReceiptLinkStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_ariand_v1_enums_proto_enumTypes[5].Descriptor()
+	return file_arian_v1_enums_proto_enumTypes[5].Descriptor()
 }
 
 func (ReceiptLinkStatus) Type() protoreflect.EnumType {
-	return &file_ariand_v1_enums_proto_enumTypes[5]
+	return &file_arian_v1_enums_proto_enumTypes[5]
 }
 
 func (x ReceiptLinkStatus) Number() protoreflect.EnumNumber {
@@ -339,14 +339,14 @@ func (x ReceiptLinkStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ReceiptLinkStatus.Descriptor instead.
 func (ReceiptLinkStatus) EnumDescriptor() ([]byte, []int) {
-	return file_ariand_v1_enums_proto_rawDescGZIP(), []int{5}
+	return file_arian_v1_enums_proto_rawDescGZIP(), []int{5}
 }
 
-var File_ariand_v1_enums_proto protoreflect.FileDescriptor
+var File_arian_v1_enums_proto protoreflect.FileDescriptor
 
-const file_ariand_v1_enums_proto_rawDesc = "" +
+const file_arian_v1_enums_proto_rawDesc = "" +
 	"\n" +
-	"\x15ariand/v1/enums.proto\x12\tariand.v1*\x95\x01\n" +
+	"\x14arian/v1/enums.proto\x12\barian.v1*\x95\x01\n" +
 	"\vAccountType\x12\x17\n" +
 	"\x13ACCOUNT_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10ACCOUNT_CHEQUING\x10\x01\x12\x13\n" +
@@ -377,30 +377,30 @@ const file_ariand_v1_enums_proto_rawDesc = "" +
 	"\x17LINK_STATUS_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14LINK_STATUS_UNLINKED\x10\x01\x12\x17\n" +
 	"\x13LINK_STATUS_MATCHED\x10\x02\x12\"\n" +
-	"\x1eLINK_STATUS_NEEDS_VERIFICATION\x10\x03B\"Z ariand/gen/go/ariand/v1;ariandv1b\x06proto3"
+	"\x1eLINK_STATUS_NEEDS_VERIFICATION\x10\x03B!Z\x1fariand/gen/go/arian/v1;ariandv1b\x06proto3"
 
 var (
-	file_ariand_v1_enums_proto_rawDescOnce sync.Once
-	file_ariand_v1_enums_proto_rawDescData []byte
+	file_arian_v1_enums_proto_rawDescOnce sync.Once
+	file_arian_v1_enums_proto_rawDescData []byte
 )
 
-func file_ariand_v1_enums_proto_rawDescGZIP() []byte {
-	file_ariand_v1_enums_proto_rawDescOnce.Do(func() {
-		file_ariand_v1_enums_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_ariand_v1_enums_proto_rawDesc), len(file_ariand_v1_enums_proto_rawDesc)))
+func file_arian_v1_enums_proto_rawDescGZIP() []byte {
+	file_arian_v1_enums_proto_rawDescOnce.Do(func() {
+		file_arian_v1_enums_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_arian_v1_enums_proto_rawDesc), len(file_arian_v1_enums_proto_rawDesc)))
 	})
-	return file_ariand_v1_enums_proto_rawDescData
+	return file_arian_v1_enums_proto_rawDescData
 }
 
-var file_ariand_v1_enums_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_ariand_v1_enums_proto_goTypes = []any{
-	(AccountType)(0),          // 0: ariand.v1.AccountType
-	(TransactionDirection)(0), // 1: ariand.v1.TransactionDirection
-	(CategorizationStatus)(0), // 2: ariand.v1.CategorizationStatus
-	(ReceiptEngine)(0),        // 3: ariand.v1.ReceiptEngine
-	(ReceiptParseStatus)(0),   // 4: ariand.v1.ReceiptParseStatus
-	(ReceiptLinkStatus)(0),    // 5: ariand.v1.ReceiptLinkStatus
+var file_arian_v1_enums_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_arian_v1_enums_proto_goTypes = []any{
+	(AccountType)(0),          // 0: arian.v1.AccountType
+	(TransactionDirection)(0), // 1: arian.v1.TransactionDirection
+	(CategorizationStatus)(0), // 2: arian.v1.CategorizationStatus
+	(ReceiptEngine)(0),        // 3: arian.v1.ReceiptEngine
+	(ReceiptParseStatus)(0),   // 4: arian.v1.ReceiptParseStatus
+	(ReceiptLinkStatus)(0),    // 5: arian.v1.ReceiptLinkStatus
 }
-var file_ariand_v1_enums_proto_depIdxs = []int32{
+var file_arian_v1_enums_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -408,26 +408,26 @@ var file_ariand_v1_enums_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_ariand_v1_enums_proto_init() }
-func file_ariand_v1_enums_proto_init() {
-	if File_ariand_v1_enums_proto != nil {
+func init() { file_arian_v1_enums_proto_init() }
+func file_arian_v1_enums_proto_init() {
+	if File_arian_v1_enums_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ariand_v1_enums_proto_rawDesc), len(file_ariand_v1_enums_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_arian_v1_enums_proto_rawDesc), len(file_arian_v1_enums_proto_rawDesc)),
 			NumEnums:      6,
 			NumMessages:   0,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_ariand_v1_enums_proto_goTypes,
-		DependencyIndexes: file_ariand_v1_enums_proto_depIdxs,
-		EnumInfos:         file_ariand_v1_enums_proto_enumTypes,
+		GoTypes:           file_arian_v1_enums_proto_goTypes,
+		DependencyIndexes: file_arian_v1_enums_proto_depIdxs,
+		EnumInfos:         file_arian_v1_enums_proto_enumTypes,
 	}.Build()
-	File_ariand_v1_enums_proto = out.File
-	file_ariand_v1_enums_proto_goTypes = nil
-	file_ariand_v1_enums_proto_depIdxs = nil
+	File_arian_v1_enums_proto = out.File
+	file_arian_v1_enums_proto_goTypes = nil
+	file_arian_v1_enums_proto_depIdxs = nil
 }

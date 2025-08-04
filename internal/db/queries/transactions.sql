@@ -31,6 +31,7 @@ WHERE (a.owner_id = sqlc.arg(user_id)::uuid OR au.user_id IS NOT NULL)
   AND (sqlc.narg('currency')::char(3) IS NULL OR t.tx_currency = sqlc.narg('currency')::char(3))
   AND (sqlc.narg('tod_start')::time IS NULL OR t.tx_date::time >= sqlc.narg('tod_start')::time)
   AND (sqlc.narg('tod_end')::time IS NULL OR t.tx_date::time <= sqlc.narg('tod_end')::time)
+  AND (sqlc.narg('uncategorized')::boolean IS NULL OR (sqlc.narg('uncategorized')::boolean = true AND t.category_id IS NULL))
 ORDER BY t.tx_date DESC, t.id DESC
 LIMIT COALESCE(sqlc.narg('limit')::int, 100);
 

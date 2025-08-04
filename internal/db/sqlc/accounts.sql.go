@@ -7,12 +7,13 @@ package sqlcdb
 
 import (
 	"context"
-	"time"
 
-	ariand "ariand/gen/go/ariand/v1"
+	arian "ariand/gen/go/arian/v1"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/shopspring/decimal"
+	"google.golang.org/genproto/googleapis/type/date"
+	"google.golang.org/genproto/googleapis/type/money"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const checkUserAccountAccess = `-- name: CheckUserAccountAccess :one
@@ -116,8 +117,8 @@ WHERE id = $1::bigint
 `
 
 type GetAccountAnchorBalanceRow struct {
-	AnchorBalance  decimal.Decimal `json:"anchor_balance"`
-	AnchorCurrency string          `json:"anchor_currency"`
+	AnchorBalance  *money.Money `json:"anchor_balance"`
+	AnchorCurrency string       `json:"anchor_currency"`
 }
 
 func (q *Queries) GetAccountAnchorBalance(ctx context.Context, id int64) (GetAccountAnchorBalanceRow, error) {
@@ -135,9 +136,9 @@ ORDER BY tx_date DESC, id DESC
 LIMIT 1
 `
 
-func (q *Queries) GetAccountBalance(ctx context.Context, accountID int64) (*decimal.Decimal, error) {
+func (q *Queries) GetAccountBalance(ctx context.Context, accountID int64) (*money.Money, error) {
 	row := q.db.QueryRow(ctx, getAccountBalance, accountID)
-	var balance_after *decimal.Decimal
+	var balance_after *money.Money
 	err := row.Scan(&balance_after)
 	return balance_after, err
 }
@@ -159,18 +160,18 @@ type GetAccountForUserParams struct {
 }
 
 type GetAccountForUserRow struct {
-	ID             int64              `json:"id"`
-	OwnerID        uuid.UUID          `json:"owner_id"`
-	Name           string             `json:"name"`
-	Bank           string             `json:"bank"`
-	AccountType    ariand.AccountType `json:"account_type"`
-	Alias          *string            `json:"alias"`
-	AnchorDate     pgtype.Date        `json:"anchor_date"`
-	AnchorBalance  decimal.Decimal    `json:"anchor_balance"`
-	AnchorCurrency string             `json:"anchor_currency"`
-	CreatedAt      time.Time          `json:"created_at"`
-	UpdatedAt      time.Time          `json:"updated_at"`
-	IsOwner        bool               `json:"is_owner"`
+	ID             int64                  `json:"id"`
+	OwnerID        uuid.UUID              `json:"owner_id"`
+	Name           string                 `json:"name"`
+	Bank           string                 `json:"bank"`
+	AccountType    arian.AccountType      `json:"account_type"`
+	Alias          *string                `json:"alias"`
+	AnchorDate     *date.Date             `json:"anchor_date"`
+	AnchorBalance  *money.Money           `json:"anchor_balance"`
+	AnchorCurrency string                 `json:"anchor_currency"`
+	CreatedAt      *timestamppb.Timestamp `json:"created_at"`
+	UpdatedAt      *timestamppb.Timestamp `json:"updated_at"`
+	IsOwner        bool                   `json:"is_owner"`
 }
 
 func (q *Queries) GetAccountForUser(ctx context.Context, arg GetAccountForUserParams) (GetAccountForUserRow, error) {
@@ -219,18 +220,18 @@ ORDER BY is_owner DESC, a.created_at
 `
 
 type ListAccountsForUserRow struct {
-	ID             int64              `json:"id"`
-	OwnerID        uuid.UUID          `json:"owner_id"`
-	Name           string             `json:"name"`
-	Bank           string             `json:"bank"`
-	AccountType    ariand.AccountType `json:"account_type"`
-	Alias          *string            `json:"alias"`
-	AnchorDate     pgtype.Date        `json:"anchor_date"`
-	AnchorBalance  decimal.Decimal    `json:"anchor_balance"`
-	AnchorCurrency string             `json:"anchor_currency"`
-	CreatedAt      time.Time          `json:"created_at"`
-	UpdatedAt      time.Time          `json:"updated_at"`
-	IsOwner        bool               `json:"is_owner"`
+	ID             int64                  `json:"id"`
+	OwnerID        uuid.UUID              `json:"owner_id"`
+	Name           string                 `json:"name"`
+	Bank           string                 `json:"bank"`
+	AccountType    arian.AccountType      `json:"account_type"`
+	Alias          *string                `json:"alias"`
+	AnchorDate     *date.Date             `json:"anchor_date"`
+	AnchorBalance  *money.Money           `json:"anchor_balance"`
+	AnchorCurrency string                 `json:"anchor_currency"`
+	CreatedAt      *timestamppb.Timestamp `json:"created_at"`
+	UpdatedAt      *timestamppb.Timestamp `json:"updated_at"`
+	IsOwner        bool                   `json:"is_owner"`
 }
 
 func (q *Queries) ListAccountsForUser(ctx context.Context, userID uuid.UUID) ([]ListAccountsForUserRow, error) {
@@ -308,7 +309,7 @@ type UpdateAccountParams struct {
 	Bank           *string          `json:"bank"`
 	AccountType    *int16           `json:"account_type"`
 	Alias          *string          `json:"alias"`
-	AnchorDate     pgtype.Date      `json:"anchor_date"`
+	AnchorDate     *date.Date       `json:"anchor_date"`
 	AnchorBalance  *decimal.Decimal `json:"anchor_balance"`
 	AnchorCurrency *string          `json:"anchor_currency"`
 	ID             int64            `json:"id"`

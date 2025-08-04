@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        (unknown)
-// source: ariand/v1/receipts.proto
+// source: arian/v1/receipts.proto
 
 package ariandv1
 
@@ -29,7 +29,7 @@ type ReceiptItem struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	ReceiptId     int64                  `protobuf:"varint,2,opt,name=receipt_id,json=receiptId,proto3" json:"receipt_id,omitempty"`
-	LineNumber    *int32                 `protobuf:"varint,3,opt,name=line_number,json=lineNumber,proto3,oneof" json:"line_number,omitempty"`
+	LineNo        *int32                 `protobuf:"varint,3,opt,name=line_no,json=lineNo,proto3,oneof" json:"line_no,omitempty"`
 	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	Quantity      float64                `protobuf:"fixed64,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	UnitPrice     *money.Money           `protobuf:"bytes,6,opt,name=unit_price,json=unitPrice,proto3,oneof" json:"unit_price,omitempty"`
@@ -44,7 +44,7 @@ type ReceiptItem struct {
 
 func (x *ReceiptItem) Reset() {
 	*x = ReceiptItem{}
-	mi := &file_ariand_v1_receipts_proto_msgTypes[0]
+	mi := &file_arian_v1_receipts_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -56,7 +56,7 @@ func (x *ReceiptItem) String() string {
 func (*ReceiptItem) ProtoMessage() {}
 
 func (x *ReceiptItem) ProtoReflect() protoreflect.Message {
-	mi := &file_ariand_v1_receipts_proto_msgTypes[0]
+	mi := &file_arian_v1_receipts_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -69,7 +69,7 @@ func (x *ReceiptItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReceiptItem.ProtoReflect.Descriptor instead.
 func (*ReceiptItem) Descriptor() ([]byte, []int) {
-	return file_ariand_v1_receipts_proto_rawDescGZIP(), []int{0}
+	return file_arian_v1_receipts_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *ReceiptItem) GetId() int64 {
@@ -86,9 +86,9 @@ func (x *ReceiptItem) GetReceiptId() int64 {
 	return 0
 }
 
-func (x *ReceiptItem) GetLineNumber() int32 {
-	if x != nil && x.LineNumber != nil {
-		return *x.LineNumber
+func (x *ReceiptItem) GetLineNo() int32 {
+	if x != nil && x.LineNo != nil {
+		return *x.LineNo
 	}
 	return 0
 }
@@ -153,9 +153,9 @@ func (x *ReceiptItem) GetUpdatedAt() *timestamppb.Timestamp {
 type Receipt struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	Id          int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Engine      ReceiptEngine          `protobuf:"varint,2,opt,name=engine,proto3,enum=ariand.v1.ReceiptEngine" json:"engine,omitempty"`
-	ParseStatus ReceiptParseStatus     `protobuf:"varint,3,opt,name=parse_status,json=parseStatus,proto3,enum=ariand.v1.ReceiptParseStatus" json:"parse_status,omitempty"`
-	LinkStatus  ReceiptLinkStatus      `protobuf:"varint,4,opt,name=link_status,json=linkStatus,proto3,enum=ariand.v1.ReceiptLinkStatus" json:"link_status,omitempty"`
+	Engine      ReceiptEngine          `protobuf:"varint,2,opt,name=engine,proto3,enum=arian.v1.ReceiptEngine" json:"engine,omitempty"`
+	ParseStatus ReceiptParseStatus     `protobuf:"varint,3,opt,name=parse_status,json=parseStatus,proto3,enum=arian.v1.ReceiptParseStatus" json:"parse_status,omitempty"`
+	LinkStatus  ReceiptLinkStatus      `protobuf:"varint,4,opt,name=link_status,json=linkStatus,proto3,enum=arian.v1.ReceiptLinkStatus" json:"link_status,omitempty"`
 	MatchIds    []int64                `protobuf:"varint,5,rep,packed,name=match_ids,json=matchIds,proto3" json:"match_ids,omitempty"`
 	// extracted fields
 	Merchant     *string      `protobuf:"bytes,6,opt,name=merchant,proto3,oneof" json:"merchant,omitempty"`
@@ -183,7 +183,7 @@ type Receipt struct {
 
 func (x *Receipt) Reset() {
 	*x = Receipt{}
-	mi := &file_ariand_v1_receipts_proto_msgTypes[1]
+	mi := &file_arian_v1_receipts_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -195,7 +195,7 @@ func (x *Receipt) String() string {
 func (*Receipt) ProtoMessage() {}
 
 func (x *Receipt) ProtoReflect() protoreflect.Message {
-	mi := &file_ariand_v1_receipts_proto_msgTypes[1]
+	mi := &file_arian_v1_receipts_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -208,7 +208,7 @@ func (x *Receipt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Receipt.ProtoReflect.Descriptor instead.
 func (*Receipt) Descriptor() ([]byte, []int) {
-	return file_ariand_v1_receipts_proto_rawDescGZIP(), []int{1}
+	return file_arian_v1_receipts_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Receipt) GetId() int64 {
@@ -362,7 +362,7 @@ type ReceiptMatchCandidate struct {
 
 func (x *ReceiptMatchCandidate) Reset() {
 	*x = ReceiptMatchCandidate{}
-	mi := &file_ariand_v1_receipts_proto_msgTypes[2]
+	mi := &file_arian_v1_receipts_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -374,7 +374,7 @@ func (x *ReceiptMatchCandidate) String() string {
 func (*ReceiptMatchCandidate) ProtoMessage() {}
 
 func (x *ReceiptMatchCandidate) ProtoReflect() protoreflect.Message {
-	mi := &file_ariand_v1_receipts_proto_msgTypes[2]
+	mi := &file_arian_v1_receipts_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -387,7 +387,7 @@ func (x *ReceiptMatchCandidate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReceiptMatchCandidate.ProtoReflect.Descriptor instead.
 func (*ReceiptMatchCandidate) Descriptor() ([]byte, []int) {
-	return file_ariand_v1_receipts_proto_rawDescGZIP(), []int{2}
+	return file_arian_v1_receipts_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ReceiptMatchCandidate) GetReceipt() *Receipt {
@@ -404,17 +404,101 @@ func (x *ReceiptMatchCandidate) GetPotentialMatches() int64 {
 	return 0
 }
 
-var File_ariand_v1_receipts_proto protoreflect.FileDescriptor
+// Receipt summary for listing unlinked receipts
+type ReceiptSummary struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Merchant      *string                `protobuf:"bytes,2,opt,name=merchant,proto3,oneof" json:"merchant,omitempty"`
+	PurchaseDate  *date.Date             `protobuf:"bytes,3,opt,name=purchase_date,json=purchaseDate,proto3,oneof" json:"purchase_date,omitempty"`
+	TotalAmount   *money.Money           `protobuf:"bytes,4,opt,name=total_amount,json=totalAmount,proto3,oneof" json:"total_amount,omitempty"`
+	Currency      string                 `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
 
-const file_ariand_v1_receipts_proto_rawDesc = "" +
+func (x *ReceiptSummary) Reset() {
+	*x = ReceiptSummary{}
+	mi := &file_arian_v1_receipts_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReceiptSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReceiptSummary) ProtoMessage() {}
+
+func (x *ReceiptSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_arian_v1_receipts_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReceiptSummary.ProtoReflect.Descriptor instead.
+func (*ReceiptSummary) Descriptor() ([]byte, []int) {
+	return file_arian_v1_receipts_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ReceiptSummary) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *ReceiptSummary) GetMerchant() string {
+	if x != nil && x.Merchant != nil {
+		return *x.Merchant
+	}
+	return ""
+}
+
+func (x *ReceiptSummary) GetPurchaseDate() *date.Date {
+	if x != nil {
+		return x.PurchaseDate
+	}
+	return nil
+}
+
+func (x *ReceiptSummary) GetTotalAmount() *money.Money {
+	if x != nil {
+		return x.TotalAmount
+	}
+	return nil
+}
+
+func (x *ReceiptSummary) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *ReceiptSummary) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+var File_arian_v1_receipts_proto protoreflect.FileDescriptor
+
+const file_arian_v1_receipts_proto_rawDesc = "" +
 	"\n" +
-	"\x18ariand/v1/receipts.proto\x12\tariand.v1\x1a\x15ariand/v1/enums.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16google/type/date.proto\x1a\x17google/type/money.proto\"\x81\x04\n" +
+	"\x17arian/v1/receipts.proto\x12\barian.v1\x1a\x14arian/v1/enums.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x16google/type/date.proto\x1a\x17google/type/money.proto\"\xf5\x03\n" +
 	"\vReceiptItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1d\n" +
 	"\n" +
-	"receipt_id\x18\x02 \x01(\x03R\treceiptId\x12$\n" +
-	"\vline_number\x18\x03 \x01(\x05H\x00R\n" +
-	"lineNumber\x88\x01\x01\x12\x12\n" +
+	"receipt_id\x18\x02 \x01(\x03R\treceiptId\x12\x1c\n" +
+	"\aline_no\x18\x03 \x01(\x05H\x00R\x06lineNo\x88\x01\x01\x12\x12\n" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12\x1a\n" +
 	"\bquantity\x18\x05 \x01(\x01R\bquantity\x126\n" +
 	"\n" +
@@ -427,17 +511,18 @@ const file_ariand_v1_receipts_proto_rawDesc = "" +
 	"created_at\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtB\x0e\n" +
-	"\f_line_numberB\r\n" +
+	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtB\n" +
+	"\n" +
+	"\b_line_noB\r\n" +
 	"\v_unit_priceB\r\n" +
 	"\v_line_totalB\x06\n" +
 	"\x04_skuB\x10\n" +
-	"\x0e_category_hint\"\xbb\b\n" +
+	"\x0e_category_hint\"\xb7\b\n" +
 	"\aReceipt\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\x120\n" +
-	"\x06engine\x18\x02 \x01(\x0e2\x18.ariand.v1.ReceiptEngineR\x06engine\x12@\n" +
-	"\fparse_status\x18\x03 \x01(\x0e2\x1d.ariand.v1.ReceiptParseStatusR\vparseStatus\x12=\n" +
-	"\vlink_status\x18\x04 \x01(\x0e2\x1c.ariand.v1.ReceiptLinkStatusR\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12/\n" +
+	"\x06engine\x18\x02 \x01(\x0e2\x17.arian.v1.ReceiptEngineR\x06engine\x12?\n" +
+	"\fparse_status\x18\x03 \x01(\x0e2\x1c.arian.v1.ReceiptParseStatusR\vparseStatus\x12<\n" +
+	"\vlink_status\x18\x04 \x01(\x0e2\x1b.arian.v1.ReceiptLinkStatusR\n" +
 	"linkStatus\x12\x1b\n" +
 	"\tmatch_ids\x18\x05 \x03(\x03R\bmatchIds\x12\x1f\n" +
 	"\bmerchant\x18\x06 \x01(\tH\x00R\bmerchant\x88\x01\x01\x12;\n" +
@@ -459,8 +544,8 @@ const file_ariand_v1_receipts_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12,\n" +
-	"\x05items\x18\x14 \x03(\v2\x16.ariand.v1.ReceiptItemR\x05itemsB\v\n" +
+	"updated_at\x18\x13 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12+\n" +
+	"\x05items\x18\x14 \x03(\v2\x15.arian.v1.ReceiptItemR\x05itemsB\v\n" +
 	"\t_merchantB\x10\n" +
 	"\x0e_purchase_dateB\x0f\n" +
 	"\r_total_amountB\r\n" +
@@ -473,80 +558,96 @@ const file_ariand_v1_receipts_proto_rawDesc = "" +
 	"_image_urlB\x0f\n" +
 	"\r_image_sha256B\x0e\n" +
 	"\f_raw_payloadB\x11\n" +
-	"\x0f_canonical_data\"r\n" +
-	"\x15ReceiptMatchCandidate\x12,\n" +
-	"\areceipt\x18\x01 \x01(\v2\x12.ariand.v1.ReceiptR\areceipt\x12+\n" +
-	"\x11potential_matches\x18\x02 \x01(\x03R\x10potentialMatchesB\"Z ariand/gen/go/ariand/v1;ariandv1b\x06proto3"
+	"\x0f_canonical_data\"q\n" +
+	"\x15ReceiptMatchCandidate\x12+\n" +
+	"\areceipt\x18\x01 \x01(\v2\x11.arian.v1.ReceiptR\areceipt\x12+\n" +
+	"\x11potential_matches\x18\x02 \x01(\x03R\x10potentialMatches\"\xc1\x02\n" +
+	"\x0eReceiptSummary\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1f\n" +
+	"\bmerchant\x18\x02 \x01(\tH\x00R\bmerchant\x88\x01\x01\x12;\n" +
+	"\rpurchase_date\x18\x03 \x01(\v2\x11.google.type.DateH\x01R\fpurchaseDate\x88\x01\x01\x12:\n" +
+	"\ftotal_amount\x18\x04 \x01(\v2\x12.google.type.MoneyH\x02R\vtotalAmount\x88\x01\x01\x12\x1a\n" +
+	"\bcurrency\x18\x05 \x01(\tR\bcurrency\x129\n" +
+	"\n" +
+	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAtB\v\n" +
+	"\t_merchantB\x10\n" +
+	"\x0e_purchase_dateB\x0f\n" +
+	"\r_total_amountB!Z\x1fariand/gen/go/arian/v1;ariandv1b\x06proto3"
 
 var (
-	file_ariand_v1_receipts_proto_rawDescOnce sync.Once
-	file_ariand_v1_receipts_proto_rawDescData []byte
+	file_arian_v1_receipts_proto_rawDescOnce sync.Once
+	file_arian_v1_receipts_proto_rawDescData []byte
 )
 
-func file_ariand_v1_receipts_proto_rawDescGZIP() []byte {
-	file_ariand_v1_receipts_proto_rawDescOnce.Do(func() {
-		file_ariand_v1_receipts_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_ariand_v1_receipts_proto_rawDesc), len(file_ariand_v1_receipts_proto_rawDesc)))
+func file_arian_v1_receipts_proto_rawDescGZIP() []byte {
+	file_arian_v1_receipts_proto_rawDescOnce.Do(func() {
+		file_arian_v1_receipts_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_arian_v1_receipts_proto_rawDesc), len(file_arian_v1_receipts_proto_rawDesc)))
 	})
-	return file_ariand_v1_receipts_proto_rawDescData
+	return file_arian_v1_receipts_proto_rawDescData
 }
 
-var file_ariand_v1_receipts_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_ariand_v1_receipts_proto_goTypes = []any{
-	(*ReceiptItem)(nil),           // 0: ariand.v1.ReceiptItem
-	(*Receipt)(nil),               // 1: ariand.v1.Receipt
-	(*ReceiptMatchCandidate)(nil), // 2: ariand.v1.ReceiptMatchCandidate
-	(*money.Money)(nil),           // 3: google.type.Money
-	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
-	(ReceiptEngine)(0),            // 5: ariand.v1.ReceiptEngine
-	(ReceiptParseStatus)(0),       // 6: ariand.v1.ReceiptParseStatus
-	(ReceiptLinkStatus)(0),        // 7: ariand.v1.ReceiptLinkStatus
-	(*date.Date)(nil),             // 8: google.type.Date
+var file_arian_v1_receipts_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_arian_v1_receipts_proto_goTypes = []any{
+	(*ReceiptItem)(nil),           // 0: arian.v1.ReceiptItem
+	(*Receipt)(nil),               // 1: arian.v1.Receipt
+	(*ReceiptMatchCandidate)(nil), // 2: arian.v1.ReceiptMatchCandidate
+	(*ReceiptSummary)(nil),        // 3: arian.v1.ReceiptSummary
+	(*money.Money)(nil),           // 4: google.type.Money
+	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
+	(ReceiptEngine)(0),            // 6: arian.v1.ReceiptEngine
+	(ReceiptParseStatus)(0),       // 7: arian.v1.ReceiptParseStatus
+	(ReceiptLinkStatus)(0),        // 8: arian.v1.ReceiptLinkStatus
+	(*date.Date)(nil),             // 9: google.type.Date
 }
-var file_ariand_v1_receipts_proto_depIdxs = []int32{
-	3,  // 0: ariand.v1.ReceiptItem.unit_price:type_name -> google.type.Money
-	3,  // 1: ariand.v1.ReceiptItem.line_total:type_name -> google.type.Money
-	4,  // 2: ariand.v1.ReceiptItem.created_at:type_name -> google.protobuf.Timestamp
-	4,  // 3: ariand.v1.ReceiptItem.updated_at:type_name -> google.protobuf.Timestamp
-	5,  // 4: ariand.v1.Receipt.engine:type_name -> ariand.v1.ReceiptEngine
-	6,  // 5: ariand.v1.Receipt.parse_status:type_name -> ariand.v1.ReceiptParseStatus
-	7,  // 6: ariand.v1.Receipt.link_status:type_name -> ariand.v1.ReceiptLinkStatus
-	8,  // 7: ariand.v1.Receipt.purchase_date:type_name -> google.type.Date
-	3,  // 8: ariand.v1.Receipt.total_amount:type_name -> google.type.Money
-	3,  // 9: ariand.v1.Receipt.tax_amount:type_name -> google.type.Money
-	4,  // 10: ariand.v1.Receipt.created_at:type_name -> google.protobuf.Timestamp
-	4,  // 11: ariand.v1.Receipt.updated_at:type_name -> google.protobuf.Timestamp
-	0,  // 12: ariand.v1.Receipt.items:type_name -> ariand.v1.ReceiptItem
-	1,  // 13: ariand.v1.ReceiptMatchCandidate.receipt:type_name -> ariand.v1.Receipt
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+var file_arian_v1_receipts_proto_depIdxs = []int32{
+	4,  // 0: arian.v1.ReceiptItem.unit_price:type_name -> google.type.Money
+	4,  // 1: arian.v1.ReceiptItem.line_total:type_name -> google.type.Money
+	5,  // 2: arian.v1.ReceiptItem.created_at:type_name -> google.protobuf.Timestamp
+	5,  // 3: arian.v1.ReceiptItem.updated_at:type_name -> google.protobuf.Timestamp
+	6,  // 4: arian.v1.Receipt.engine:type_name -> arian.v1.ReceiptEngine
+	7,  // 5: arian.v1.Receipt.parse_status:type_name -> arian.v1.ReceiptParseStatus
+	8,  // 6: arian.v1.Receipt.link_status:type_name -> arian.v1.ReceiptLinkStatus
+	9,  // 7: arian.v1.Receipt.purchase_date:type_name -> google.type.Date
+	4,  // 8: arian.v1.Receipt.total_amount:type_name -> google.type.Money
+	4,  // 9: arian.v1.Receipt.tax_amount:type_name -> google.type.Money
+	5,  // 10: arian.v1.Receipt.created_at:type_name -> google.protobuf.Timestamp
+	5,  // 11: arian.v1.Receipt.updated_at:type_name -> google.protobuf.Timestamp
+	0,  // 12: arian.v1.Receipt.items:type_name -> arian.v1.ReceiptItem
+	1,  // 13: arian.v1.ReceiptMatchCandidate.receipt:type_name -> arian.v1.Receipt
+	9,  // 14: arian.v1.ReceiptSummary.purchase_date:type_name -> google.type.Date
+	4,  // 15: arian.v1.ReceiptSummary.total_amount:type_name -> google.type.Money
+	5,  // 16: arian.v1.ReceiptSummary.created_at:type_name -> google.protobuf.Timestamp
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
-func init() { file_ariand_v1_receipts_proto_init() }
-func file_ariand_v1_receipts_proto_init() {
-	if File_ariand_v1_receipts_proto != nil {
+func init() { file_arian_v1_receipts_proto_init() }
+func file_arian_v1_receipts_proto_init() {
+	if File_arian_v1_receipts_proto != nil {
 		return
 	}
-	file_ariand_v1_enums_proto_init()
-	file_ariand_v1_receipts_proto_msgTypes[0].OneofWrappers = []any{}
-	file_ariand_v1_receipts_proto_msgTypes[1].OneofWrappers = []any{}
+	file_arian_v1_enums_proto_init()
+	file_arian_v1_receipts_proto_msgTypes[0].OneofWrappers = []any{}
+	file_arian_v1_receipts_proto_msgTypes[1].OneofWrappers = []any{}
+	file_arian_v1_receipts_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ariand_v1_receipts_proto_rawDesc), len(file_ariand_v1_receipts_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_arian_v1_receipts_proto_rawDesc), len(file_arian_v1_receipts_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_ariand_v1_receipts_proto_goTypes,
-		DependencyIndexes: file_ariand_v1_receipts_proto_depIdxs,
-		MessageInfos:      file_ariand_v1_receipts_proto_msgTypes,
+		GoTypes:           file_arian_v1_receipts_proto_goTypes,
+		DependencyIndexes: file_arian_v1_receipts_proto_depIdxs,
+		MessageInfos:      file_arian_v1_receipts_proto_msgTypes,
 	}.Build()
-	File_ariand_v1_receipts_proto = out.File
-	file_ariand_v1_receipts_proto_goTypes = nil
-	file_ariand_v1_receipts_proto_depIdxs = nil
+	File_arian_v1_receipts_proto = out.File
+	file_arian_v1_receipts_proto_goTypes = nil
+	file_arian_v1_receipts_proto_depIdxs = nil
 }

@@ -7,9 +7,9 @@ package sqlcdb
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type BulkCreateCategoriesParams struct {
@@ -124,26 +124,43 @@ SELECT
   MAX(t.tx_date) AS last_used
 FROM categories c
 LEFT JOIN transactions t ON c.id = t.category_id
-WHERE c.id = $1::bigint
+LEFT JOIN accounts a ON t.account_id = a.id
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
+WHERE c.id = $2::bigint
+  AND ($1::uuid IS NULL OR (a.owner_id = $1::uuid OR au.user_id IS NOT NULL))
+  AND ($3::timestamptz IS NULL OR t.tx_date >= $3::timestamptz)
+  AND ($4::timestamptz IS NULL OR t.tx_date <= $4::timestamptz)
 GROUP BY c.id, c.slug, c.label, c.color, c.created_at, c.updated_at
 `
 
-type GetCategoryWithStatsRow struct {
-	ID          int64       `json:"id"`
-	Slug        string      `json:"slug"`
-	Label       string      `json:"label"`
-	Color       string      `json:"color"`
-	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   time.Time   `json:"updated_at"`
-	UsageCount  int64       `json:"usage_count"`
-	TotalAmount interface{} `json:"total_amount"`
-	AvgAmount   interface{} `json:"avg_amount"`
-	FirstUsed   interface{} `json:"first_used"`
-	LastUsed    interface{} `json:"last_used"`
+type GetCategoryWithStatsParams struct {
+	UserID    uuid.UUID              `json:"user_id"`
+	ID        int64                  `json:"id"`
+	StartDate *timestamppb.Timestamp `json:"start_date"`
+	EndDate   *timestamppb.Timestamp `json:"end_date"`
 }
 
-func (q *Queries) GetCategoryWithStats(ctx context.Context, id int64) (GetCategoryWithStatsRow, error) {
-	row := q.db.QueryRow(ctx, getCategoryWithStats, id)
+type GetCategoryWithStatsRow struct {
+	ID          int64                  `json:"id"`
+	Slug        string                 `json:"slug"`
+	Label       string                 `json:"label"`
+	Color       string                 `json:"color"`
+	CreatedAt   *timestamppb.Timestamp `json:"created_at"`
+	UpdatedAt   *timestamppb.Timestamp `json:"updated_at"`
+	UsageCount  int64                  `json:"usage_count"`
+	TotalAmount interface{}            `json:"total_amount"`
+	AvgAmount   interface{}            `json:"avg_amount"`
+	FirstUsed   interface{}            `json:"first_used"`
+	LastUsed    interface{}            `json:"last_used"`
+}
+
+func (q *Queries) GetCategoryWithStats(ctx context.Context, arg GetCategoryWithStatsParams) (GetCategoryWithStatsRow, error) {
+	row := q.db.QueryRow(ctx, getCategoryWithStats,
+		arg.UserID,
+		arg.ID,
+		arg.StartDate,
+		arg.EndDate,
+	)
 	var i GetCategoryWithStatsRow
 	err := row.Scan(
 		&i.ID,
@@ -179,10 +196,10 @@ LIMIT COALESCE($4::int, 10)
 `
 
 type GetMostUsedCategoriesForUserParams struct {
-	UserID uuid.UUID  `json:"user_id"`
-	Start  *time.Time `json:"start"`
-	End    *time.Time `json:"end"`
-	Limit  *int32     `json:"limit"`
+	UserID uuid.UUID              `json:"user_id"`
+	Start  *timestamppb.Timestamp `json:"start"`
+	End    *timestamppb.Timestamp `json:"end"`
+	Limit  *int32                 `json:"limit"`
 }
 
 type GetMostUsedCategoriesForUserRow struct {
@@ -309,14 +326,14 @@ ORDER BY user_usage_count DESC, c.slug
 `
 
 type ListCategoriesForUserRow struct {
-	ID              int64       `json:"id"`
-	Slug            string      `json:"slug"`
-	Label           string      `json:"label"`
-	Color           string      `json:"color"`
-	CreatedAt       time.Time   `json:"created_at"`
-	UpdatedAt       time.Time   `json:"updated_at"`
-	UserUsageCount  int64       `json:"user_usage_count"`
-	UserTotalAmount interface{} `json:"user_total_amount"`
+	ID              int64                  `json:"id"`
+	Slug            string                 `json:"slug"`
+	Label           string                 `json:"label"`
+	Color           string                 `json:"color"`
+	CreatedAt       *timestamppb.Timestamp `json:"created_at"`
+	UpdatedAt       *timestamppb.Timestamp `json:"updated_at"`
+	UserUsageCount  int64                  `json:"user_usage_count"`
+	UserTotalAmount interface{}            `json:"user_total_amount"`
 }
 
 func (q *Queries) ListCategoriesForUser(ctx context.Context, userID uuid.UUID) ([]ListCategoriesForUserRow, error) {
@@ -355,23 +372,41 @@ SELECT
   COALESCE(SUM(t.tx_amount), 0) AS total_amount
 FROM categories c
 LEFT JOIN transactions t ON c.id = t.category_id
+LEFT JOIN accounts a ON t.account_id = a.id
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = $1::uuid
+WHERE $1::uuid IS NULL OR (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
+  AND ($2::timestamptz IS NULL OR t.tx_date >= $2::timestamptz)
+  AND ($3::timestamptz IS NULL OR t.tx_date <= $3::timestamptz)
 GROUP BY c.id, c.slug, c.label, c.color, c.created_at, c.updated_at
 ORDER BY usage_count DESC, c.slug
+LIMIT COALESCE($4::int, 100)
 `
 
-type ListCategoriesWithUsageRow struct {
-	ID          int64       `json:"id"`
-	Slug        string      `json:"slug"`
-	Label       string      `json:"label"`
-	Color       string      `json:"color"`
-	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   time.Time   `json:"updated_at"`
-	UsageCount  int64       `json:"usage_count"`
-	TotalAmount interface{} `json:"total_amount"`
+type ListCategoriesWithUsageParams struct {
+	UserID    uuid.UUID              `json:"user_id"`
+	StartDate *timestamppb.Timestamp `json:"start_date"`
+	EndDate   *timestamppb.Timestamp `json:"end_date"`
+	Limit     *int32                 `json:"limit"`
 }
 
-func (q *Queries) ListCategoriesWithUsage(ctx context.Context) ([]ListCategoriesWithUsageRow, error) {
-	rows, err := q.db.Query(ctx, listCategoriesWithUsage)
+type ListCategoriesWithUsageRow struct {
+	ID          int64                  `json:"id"`
+	Slug        string                 `json:"slug"`
+	Label       string                 `json:"label"`
+	Color       string                 `json:"color"`
+	CreatedAt   *timestamppb.Timestamp `json:"created_at"`
+	UpdatedAt   *timestamppb.Timestamp `json:"updated_at"`
+	UsageCount  int64                  `json:"usage_count"`
+	TotalAmount interface{}            `json:"total_amount"`
+}
+
+func (q *Queries) ListCategoriesWithUsage(ctx context.Context, arg ListCategoriesWithUsageParams) ([]ListCategoriesWithUsageRow, error) {
+	rows, err := q.db.Query(ctx, listCategoriesWithUsage,
+		arg.UserID,
+		arg.StartDate,
+		arg.EndDate,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -10,8 +10,14 @@ SELECT
   COALESCE(SUM(t.tx_amount), 0) AS total_amount
 FROM categories c
 LEFT JOIN transactions t ON c.id = t.category_id
+LEFT JOIN accounts a ON t.account_id = a.id
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = @user_id::uuid
+WHERE @user_id::uuid IS NULL OR (a.owner_id = @user_id::uuid OR au.user_id IS NOT NULL)
+  AND (sqlc.narg('start_date')::timestamptz IS NULL OR t.tx_date >= sqlc.narg('start_date')::timestamptz)
+  AND (sqlc.narg('end_date')::timestamptz IS NULL OR t.tx_date <= sqlc.narg('end_date')::timestamptz)
 GROUP BY c.id, c.slug, c.label, c.color, c.created_at, c.updated_at
-ORDER BY usage_count DESC, c.slug;
+ORDER BY usage_count DESC, c.slug
+LIMIT COALESCE(sqlc.narg('limit')::int, 100);
 
 -- name: ListCategoriesForUser :many
 SELECT DISTINCT
@@ -46,7 +52,12 @@ SELECT
   MAX(t.tx_date) AS last_used
 FROM categories c
 LEFT JOIN transactions t ON c.id = t.category_id
+LEFT JOIN accounts a ON t.account_id = a.id
+LEFT JOIN account_users au ON a.id = au.account_id AND au.user_id = @user_id::uuid
 WHERE c.id = @id::bigint
+  AND (@user_id::uuid IS NULL OR (a.owner_id = @user_id::uuid OR au.user_id IS NOT NULL))
+  AND (sqlc.narg('start_date')::timestamptz IS NULL OR t.tx_date >= sqlc.narg('start_date')::timestamptz)
+  AND (sqlc.narg('end_date')::timestamptz IS NULL OR t.tx_date <= sqlc.narg('end_date')::timestamptz)
 GROUP BY c.id, c.slug, c.label, c.color, c.created_at, c.updated_at;
 
 -- name: ListCategorySlugs :many

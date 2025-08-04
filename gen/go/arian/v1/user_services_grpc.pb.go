@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: ariand/v1/user_services.proto
+// source: arian/v1/user_services.proto
 
 package ariandv1
 
@@ -19,11 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_GetUser_FullMethodName        = "/ariand.v1.UserService/GetUser"
-	UserService_GetUserByEmail_FullMethodName = "/ariand.v1.UserService/GetUserByEmail"
-	UserService_CreateUser_FullMethodName     = "/ariand.v1.UserService/CreateUser"
-	UserService_UpdateUser_FullMethodName     = "/ariand.v1.UserService/UpdateUser"
-	UserService_DeleteUser_FullMethodName     = "/ariand.v1.UserService/DeleteUser"
+	UserService_GetUser_FullMethodName               = "/arian.v1.UserService/GetUser"
+	UserService_GetUserByEmail_FullMethodName        = "/arian.v1.UserService/GetUserByEmail"
+	UserService_CreateUser_FullMethodName            = "/arian.v1.UserService/CreateUser"
+	UserService_UpdateUser_FullMethodName            = "/arian.v1.UserService/UpdateUser"
+	UserService_UpdateUserDisplayName_FullMethodName = "/arian.v1.UserService/UpdateUserDisplayName"
+	UserService_DeleteUser_FullMethodName            = "/arian.v1.UserService/DeleteUser"
+	UserService_ListUsers_FullMethodName             = "/arian.v1.UserService/ListUsers"
+	UserService_CheckUserExists_FullMethodName       = "/arian.v1.UserService/CheckUserExists"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -36,7 +39,10 @@ type UserServiceClient interface {
 	GetUserByEmail(ctx context.Context, in *GetUserByEmailRequest, opts ...grpc.CallOption) (*GetUserByEmailResponse, error)
 	CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*CreateUserResponse, error)
 	UpdateUser(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error)
+	UpdateUserDisplayName(ctx context.Context, in *UpdateUserDisplayNameRequest, opts ...grpc.CallOption) (*UpdateUserDisplayNameResponse, error)
 	DeleteUser(ctx context.Context, in *DeleteUserRequest, opts ...grpc.CallOption) (*DeleteUserResponse, error)
+	ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (*ListUsersResponse, error)
+	CheckUserExists(ctx context.Context, in *CheckUserExistsRequest, opts ...grpc.CallOption) (*CheckUserExistsResponse, error)
 }
 
 type userServiceClient struct {
@@ -87,10 +93,40 @@ func (c *userServiceClient) UpdateUser(ctx context.Context, in *UpdateUserReques
 	return out, nil
 }
 
+func (c *userServiceClient) UpdateUserDisplayName(ctx context.Context, in *UpdateUserDisplayNameRequest, opts ...grpc.CallOption) (*UpdateUserDisplayNameResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateUserDisplayNameResponse)
+	err := c.cc.Invoke(ctx, UserService_UpdateUserDisplayName_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) DeleteUser(ctx context.Context, in *DeleteUserRequest, opts ...grpc.CallOption) (*DeleteUserResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeleteUserResponse)
 	err := c.cc.Invoke(ctx, UserService_DeleteUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (*ListUsersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListUsersResponse)
+	err := c.cc.Invoke(ctx, UserService_ListUsers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) CheckUserExists(ctx context.Context, in *CheckUserExistsRequest, opts ...grpc.CallOption) (*CheckUserExistsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckUserExistsResponse)
+	err := c.cc.Invoke(ctx, UserService_CheckUserExists_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +143,10 @@ type UserServiceServer interface {
 	GetUserByEmail(context.Context, *GetUserByEmailRequest) (*GetUserByEmailResponse, error)
 	CreateUser(context.Context, *CreateUserRequest) (*CreateUserResponse, error)
 	UpdateUser(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error)
+	UpdateUserDisplayName(context.Context, *UpdateUserDisplayNameRequest) (*UpdateUserDisplayNameResponse, error)
 	DeleteUser(context.Context, *DeleteUserRequest) (*DeleteUserResponse, error)
+	ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error)
+	CheckUserExists(context.Context, *CheckUserExistsRequest) (*CheckUserExistsResponse, error)
 }
 
 // UnimplementedUserServiceServer should be embedded to have
@@ -129,8 +168,17 @@ func (UnimplementedUserServiceServer) CreateUser(context.Context, *CreateUserReq
 func (UnimplementedUserServiceServer) UpdateUser(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateUser not implemented")
 }
+func (UnimplementedUserServiceServer) UpdateUserDisplayName(context.Context, *UpdateUserDisplayNameRequest) (*UpdateUserDisplayNameResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateUserDisplayName not implemented")
+}
 func (UnimplementedUserServiceServer) DeleteUser(context.Context, *DeleteUserRequest) (*DeleteUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteUser not implemented")
+}
+func (UnimplementedUserServiceServer) ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListUsers not implemented")
+}
+func (UnimplementedUserServiceServer) CheckUserExists(context.Context, *CheckUserExistsRequest) (*CheckUserExistsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckUserExists not implemented")
 }
 func (UnimplementedUserServiceServer) testEmbeddedByValue() {}
 
@@ -224,6 +272,24 @@ func _UserService_UpdateUser_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_UpdateUserDisplayName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateUserDisplayNameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).UpdateUserDisplayName(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_UpdateUserDisplayName_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).UpdateUserDisplayName(ctx, req.(*UpdateUserDisplayNameRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_DeleteUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteUserRequest)
 	if err := dec(in); err != nil {
@@ -242,11 +308,47 @@ func _UserService_DeleteUser_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_ListUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListUsersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListUsers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListUsers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListUsers(ctx, req.(*ListUsersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_CheckUserExists_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckUserExistsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CheckUserExists(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CheckUserExists_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CheckUserExists(ctx, req.(*CheckUserExistsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var UserService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "ariand.v1.UserService",
+	ServiceName: "arian.v1.UserService",
 	HandlerType: (*UserServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -266,20 +368,37 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UserService_UpdateUser_Handler,
 		},
 		{
+			MethodName: "UpdateUserDisplayName",
+			Handler:    _UserService_UpdateUserDisplayName_Handler,
+		},
+		{
 			MethodName: "DeleteUser",
 			Handler:    _UserService_DeleteUser_Handler,
 		},
+		{
+			MethodName: "ListUsers",
+			Handler:    _UserService_ListUsers_Handler,
+		},
+		{
+			MethodName: "CheckUserExists",
+			Handler:    _UserService_CheckUserExists_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "ariand/v1/user_services.proto",
+	Metadata: "arian/v1/user_services.proto",
 }
 
 const (
-	CredentialService_ListCredentials_FullMethodName           = "/ariand.v1.CredentialService/ListCredentials"
-	CredentialService_GetCredential_FullMethodName             = "/ariand.v1.CredentialService/GetCredential"
-	CredentialService_CreateCredential_FullMethodName          = "/ariand.v1.CredentialService/CreateCredential"
-	CredentialService_UpdateCredentialSignCount_FullMethodName = "/ariand.v1.CredentialService/UpdateCredentialSignCount"
-	CredentialService_DeleteCredential_FullMethodName          = "/ariand.v1.CredentialService/DeleteCredential"
+	CredentialService_ListCredentials_FullMethodName                         = "/arian.v1.CredentialService/ListCredentials"
+	CredentialService_GetCredential_FullMethodName                           = "/arian.v1.CredentialService/GetCredential"
+	CredentialService_GetCredentialByCredentialID_FullMethodName             = "/arian.v1.CredentialService/GetCredentialByCredentialID"
+	CredentialService_GetCredentialForUser_FullMethodName                    = "/arian.v1.CredentialService/GetCredentialForUser"
+	CredentialService_CreateCredential_FullMethodName                        = "/arian.v1.CredentialService/CreateCredential"
+	CredentialService_UpdateCredentialSignCountByCredentialID_FullMethodName = "/arian.v1.CredentialService/UpdateCredentialSignCountByCredentialID"
+	CredentialService_DeleteCredential_FullMethodName                        = "/arian.v1.CredentialService/DeleteCredential"
+	CredentialService_DeleteAllCredentialsForUser_FullMethodName             = "/arian.v1.CredentialService/DeleteAllCredentialsForUser"
+	CredentialService_CountCredentialsForUser_FullMethodName                 = "/arian.v1.CredentialService/CountCredentialsForUser"
+	CredentialService_CheckCredentialExists_FullMethodName                   = "/arian.v1.CredentialService/CheckCredentialExists"
 )
 
 // CredentialServiceClient is the client API for CredentialService service.
@@ -290,9 +409,14 @@ const (
 type CredentialServiceClient interface {
 	ListCredentials(ctx context.Context, in *ListCredentialsRequest, opts ...grpc.CallOption) (*ListCredentialsResponse, error)
 	GetCredential(ctx context.Context, in *GetCredentialRequest, opts ...grpc.CallOption) (*GetCredentialResponse, error)
+	GetCredentialByCredentialID(ctx context.Context, in *GetCredentialByCredentialIDRequest, opts ...grpc.CallOption) (*GetCredentialByCredentialIDResponse, error)
+	GetCredentialForUser(ctx context.Context, in *GetCredentialForUserRequest, opts ...grpc.CallOption) (*GetCredentialForUserResponse, error)
 	CreateCredential(ctx context.Context, in *CreateCredentialRequest, opts ...grpc.CallOption) (*CreateCredentialResponse, error)
-	UpdateCredentialSignCount(ctx context.Context, in *UpdateCredentialSignCountRequest, opts ...grpc.CallOption) (*UpdateCredentialSignCountResponse, error)
+	UpdateCredentialSignCountByCredentialID(ctx context.Context, in *UpdateCredentialSignCountByCredentialIDRequest, opts ...grpc.CallOption) (*UpdateCredentialSignCountByCredentialIDResponse, error)
 	DeleteCredential(ctx context.Context, in *DeleteCredentialRequest, opts ...grpc.CallOption) (*DeleteCredentialResponse, error)
+	DeleteAllCredentialsForUser(ctx context.Context, in *DeleteAllCredentialsForUserRequest, opts ...grpc.CallOption) (*DeleteAllCredentialsForUserResponse, error)
+	CountCredentialsForUser(ctx context.Context, in *CountCredentialsForUserRequest, opts ...grpc.CallOption) (*CountCredentialsForUserResponse, error)
+	CheckCredentialExists(ctx context.Context, in *CheckCredentialExistsRequest, opts ...grpc.CallOption) (*CheckCredentialExistsResponse, error)
 }
 
 type credentialServiceClient struct {
@@ -323,6 +447,26 @@ func (c *credentialServiceClient) GetCredential(ctx context.Context, in *GetCred
 	return out, nil
 }
 
+func (c *credentialServiceClient) GetCredentialByCredentialID(ctx context.Context, in *GetCredentialByCredentialIDRequest, opts ...grpc.CallOption) (*GetCredentialByCredentialIDResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCredentialByCredentialIDResponse)
+	err := c.cc.Invoke(ctx, CredentialService_GetCredentialByCredentialID_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *credentialServiceClient) GetCredentialForUser(ctx context.Context, in *GetCredentialForUserRequest, opts ...grpc.CallOption) (*GetCredentialForUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCredentialForUserResponse)
+	err := c.cc.Invoke(ctx, CredentialService_GetCredentialForUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *credentialServiceClient) CreateCredential(ctx context.Context, in *CreateCredentialRequest, opts ...grpc.CallOption) (*CreateCredentialResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateCredentialResponse)
@@ -333,10 +477,10 @@ func (c *credentialServiceClient) CreateCredential(ctx context.Context, in *Crea
 	return out, nil
 }
 
-func (c *credentialServiceClient) UpdateCredentialSignCount(ctx context.Context, in *UpdateCredentialSignCountRequest, opts ...grpc.CallOption) (*UpdateCredentialSignCountResponse, error) {
+func (c *credentialServiceClient) UpdateCredentialSignCountByCredentialID(ctx context.Context, in *UpdateCredentialSignCountByCredentialIDRequest, opts ...grpc.CallOption) (*UpdateCredentialSignCountByCredentialIDResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UpdateCredentialSignCountResponse)
-	err := c.cc.Invoke(ctx, CredentialService_UpdateCredentialSignCount_FullMethodName, in, out, cOpts...)
+	out := new(UpdateCredentialSignCountByCredentialIDResponse)
+	err := c.cc.Invoke(ctx, CredentialService_UpdateCredentialSignCountByCredentialID_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -353,6 +497,36 @@ func (c *credentialServiceClient) DeleteCredential(ctx context.Context, in *Dele
 	return out, nil
 }
 
+func (c *credentialServiceClient) DeleteAllCredentialsForUser(ctx context.Context, in *DeleteAllCredentialsForUserRequest, opts ...grpc.CallOption) (*DeleteAllCredentialsForUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteAllCredentialsForUserResponse)
+	err := c.cc.Invoke(ctx, CredentialService_DeleteAllCredentialsForUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *credentialServiceClient) CountCredentialsForUser(ctx context.Context, in *CountCredentialsForUserRequest, opts ...grpc.CallOption) (*CountCredentialsForUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CountCredentialsForUserResponse)
+	err := c.cc.Invoke(ctx, CredentialService_CountCredentialsForUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *credentialServiceClient) CheckCredentialExists(ctx context.Context, in *CheckCredentialExistsRequest, opts ...grpc.CallOption) (*CheckCredentialExistsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckCredentialExistsResponse)
+	err := c.cc.Invoke(ctx, CredentialService_CheckCredentialExists_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CredentialServiceServer is the server API for CredentialService service.
 // All implementations should embed UnimplementedCredentialServiceServer
 // for forward compatibility.
@@ -361,9 +535,14 @@ func (c *credentialServiceClient) DeleteCredential(ctx context.Context, in *Dele
 type CredentialServiceServer interface {
 	ListCredentials(context.Context, *ListCredentialsRequest) (*ListCredentialsResponse, error)
 	GetCredential(context.Context, *GetCredentialRequest) (*GetCredentialResponse, error)
+	GetCredentialByCredentialID(context.Context, *GetCredentialByCredentialIDRequest) (*GetCredentialByCredentialIDResponse, error)
+	GetCredentialForUser(context.Context, *GetCredentialForUserRequest) (*GetCredentialForUserResponse, error)
 	CreateCredential(context.Context, *CreateCredentialRequest) (*CreateCredentialResponse, error)
-	UpdateCredentialSignCount(context.Context, *UpdateCredentialSignCountRequest) (*UpdateCredentialSignCountResponse, error)
+	UpdateCredentialSignCountByCredentialID(context.Context, *UpdateCredentialSignCountByCredentialIDRequest) (*UpdateCredentialSignCountByCredentialIDResponse, error)
 	DeleteCredential(context.Context, *DeleteCredentialRequest) (*DeleteCredentialResponse, error)
+	DeleteAllCredentialsForUser(context.Context, *DeleteAllCredentialsForUserRequest) (*DeleteAllCredentialsForUserResponse, error)
+	CountCredentialsForUser(context.Context, *CountCredentialsForUserRequest) (*CountCredentialsForUserResponse, error)
+	CheckCredentialExists(context.Context, *CheckCredentialExistsRequest) (*CheckCredentialExistsResponse, error)
 }
 
 // UnimplementedCredentialServiceServer should be embedded to have
@@ -379,14 +558,29 @@ func (UnimplementedCredentialServiceServer) ListCredentials(context.Context, *Li
 func (UnimplementedCredentialServiceServer) GetCredential(context.Context, *GetCredentialRequest) (*GetCredentialResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCredential not implemented")
 }
+func (UnimplementedCredentialServiceServer) GetCredentialByCredentialID(context.Context, *GetCredentialByCredentialIDRequest) (*GetCredentialByCredentialIDResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCredentialByCredentialID not implemented")
+}
+func (UnimplementedCredentialServiceServer) GetCredentialForUser(context.Context, *GetCredentialForUserRequest) (*GetCredentialForUserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCredentialForUser not implemented")
+}
 func (UnimplementedCredentialServiceServer) CreateCredential(context.Context, *CreateCredentialRequest) (*CreateCredentialResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateCredential not implemented")
 }
-func (UnimplementedCredentialServiceServer) UpdateCredentialSignCount(context.Context, *UpdateCredentialSignCountRequest) (*UpdateCredentialSignCountResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateCredentialSignCount not implemented")
+func (UnimplementedCredentialServiceServer) UpdateCredentialSignCountByCredentialID(context.Context, *UpdateCredentialSignCountByCredentialIDRequest) (*UpdateCredentialSignCountByCredentialIDResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateCredentialSignCountByCredentialID not implemented")
 }
 func (UnimplementedCredentialServiceServer) DeleteCredential(context.Context, *DeleteCredentialRequest) (*DeleteCredentialResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteCredential not implemented")
+}
+func (UnimplementedCredentialServiceServer) DeleteAllCredentialsForUser(context.Context, *DeleteAllCredentialsForUserRequest) (*DeleteAllCredentialsForUserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteAllCredentialsForUser not implemented")
+}
+func (UnimplementedCredentialServiceServer) CountCredentialsForUser(context.Context, *CountCredentialsForUserRequest) (*CountCredentialsForUserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CountCredentialsForUser not implemented")
+}
+func (UnimplementedCredentialServiceServer) CheckCredentialExists(context.Context, *CheckCredentialExistsRequest) (*CheckCredentialExistsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckCredentialExists not implemented")
 }
 func (UnimplementedCredentialServiceServer) testEmbeddedByValue() {}
 
@@ -444,6 +638,42 @@ func _CredentialService_GetCredential_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CredentialService_GetCredentialByCredentialID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCredentialByCredentialIDRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CredentialServiceServer).GetCredentialByCredentialID(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CredentialService_GetCredentialByCredentialID_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CredentialServiceServer).GetCredentialByCredentialID(ctx, req.(*GetCredentialByCredentialIDRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CredentialService_GetCredentialForUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCredentialForUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CredentialServiceServer).GetCredentialForUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CredentialService_GetCredentialForUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CredentialServiceServer).GetCredentialForUser(ctx, req.(*GetCredentialForUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _CredentialService_CreateCredential_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateCredentialRequest)
 	if err := dec(in); err != nil {
@@ -462,20 +692,20 @@ func _CredentialService_CreateCredential_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
-func _CredentialService_UpdateCredentialSignCount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateCredentialSignCountRequest)
+func _CredentialService_UpdateCredentialSignCountByCredentialID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateCredentialSignCountByCredentialIDRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(CredentialServiceServer).UpdateCredentialSignCount(ctx, in)
+		return srv.(CredentialServiceServer).UpdateCredentialSignCountByCredentialID(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: CredentialService_UpdateCredentialSignCount_FullMethodName,
+		FullMethod: CredentialService_UpdateCredentialSignCountByCredentialID_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CredentialServiceServer).UpdateCredentialSignCount(ctx, req.(*UpdateCredentialSignCountRequest))
+		return srv.(CredentialServiceServer).UpdateCredentialSignCountByCredentialID(ctx, req.(*UpdateCredentialSignCountByCredentialIDRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -498,11 +728,65 @@ func _CredentialService_DeleteCredential_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CredentialService_DeleteAllCredentialsForUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteAllCredentialsForUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CredentialServiceServer).DeleteAllCredentialsForUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CredentialService_DeleteAllCredentialsForUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CredentialServiceServer).DeleteAllCredentialsForUser(ctx, req.(*DeleteAllCredentialsForUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CredentialService_CountCredentialsForUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CountCredentialsForUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CredentialServiceServer).CountCredentialsForUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CredentialService_CountCredentialsForUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CredentialServiceServer).CountCredentialsForUser(ctx, req.(*CountCredentialsForUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CredentialService_CheckCredentialExists_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckCredentialExistsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CredentialServiceServer).CheckCredentialExists(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CredentialService_CheckCredentialExists_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CredentialServiceServer).CheckCredentialExists(ctx, req.(*CheckCredentialExistsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CredentialService_ServiceDesc is the grpc.ServiceDesc for CredentialService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var CredentialService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "ariand.v1.CredentialService",
+	ServiceName: "arian.v1.CredentialService",
 	HandlerType: (*CredentialServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -514,18 +798,38 @@ var CredentialService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _CredentialService_GetCredential_Handler,
 		},
 		{
+			MethodName: "GetCredentialByCredentialID",
+			Handler:    _CredentialService_GetCredentialByCredentialID_Handler,
+		},
+		{
+			MethodName: "GetCredentialForUser",
+			Handler:    _CredentialService_GetCredentialForUser_Handler,
+		},
+		{
 			MethodName: "CreateCredential",
 			Handler:    _CredentialService_CreateCredential_Handler,
 		},
 		{
-			MethodName: "UpdateCredentialSignCount",
-			Handler:    _CredentialService_UpdateCredentialSignCount_Handler,
+			MethodName: "UpdateCredentialSignCountByCredentialID",
+			Handler:    _CredentialService_UpdateCredentialSignCountByCredentialID_Handler,
 		},
 		{
 			MethodName: "DeleteCredential",
 			Handler:    _CredentialService_DeleteCredential_Handler,
 		},
+		{
+			MethodName: "DeleteAllCredentialsForUser",
+			Handler:    _CredentialService_DeleteAllCredentialsForUser_Handler,
+		},
+		{
+			MethodName: "CountCredentialsForUser",
+			Handler:    _CredentialService_CountCredentialsForUser_Handler,
+		},
+		{
+			MethodName: "CheckCredentialExists",
+			Handler:    _CredentialService_CheckCredentialExists_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "ariand/v1/user_services.proto",
+	Metadata: "arian/v1/user_services.proto",
 }

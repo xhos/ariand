@@ -7,11 +7,12 @@ package sqlcdb
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/shopspring/decimal"
+	"google.golang.org/genproto/googleapis/type/date"
+	"google.golang.org/genproto/googleapis/type/money"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type BulkCreateReceiptItemsParams struct {
@@ -19,8 +20,8 @@ type BulkCreateReceiptItemsParams struct {
 	LineNo       *int32           `json:"line_no"`
 	Name         string           `json:"name"`
 	Qty          *decimal.Decimal `json:"qty"`
-	UnitPrice    *decimal.Decimal `json:"unit_price"`
-	LineTotal    *decimal.Decimal `json:"line_total"`
+	UnitPrice    *money.Money     `json:"unit_price"`
+	LineTotal    *money.Money     `json:"line_total"`
 	Sku          *string          `json:"sku"`
 	CategoryHint *string          `json:"category_hint"`
 }
@@ -64,7 +65,7 @@ type CreateReceiptParams struct {
 	LinkStatus     *int16           `json:"link_status"`
 	MatchIds       []int64          `json:"match_ids"`
 	Merchant       *string          `json:"merchant"`
-	PurchaseDate   pgtype.Date      `json:"purchase_date"`
+	PurchaseDate   *date.Date       `json:"purchase_date"`
 	TotalAmount    *decimal.Decimal `json:"total_amount"`
 	Currency       *string          `json:"currency"`
 	TaxAmount      *decimal.Decimal `json:"tax_amount"`
@@ -315,12 +316,12 @@ ORDER BY r.created_at DESC
 `
 
 type GetReceiptMatchCandidatesRow struct {
-	ID               int64            `json:"id"`
-	Merchant         *string          `json:"merchant"`
-	PurchaseDate     pgtype.Date      `json:"purchase_date"`
-	TotalAmount      *decimal.Decimal `json:"total_amount"`
-	Currency         *string          `json:"currency"`
-	PotentialMatches int64            `json:"potential_matches"`
+	ID               int64        `json:"id"`
+	Merchant         *string      `json:"merchant"`
+	PurchaseDate     *date.Date   `json:"purchase_date"`
+	TotalAmount      *money.Money `json:"total_amount"`
+	Currency         *string      `json:"currency"`
+	PotentialMatches int64        `json:"potential_matches"`
 }
 
 func (q *Queries) GetReceiptMatchCandidates(ctx context.Context) ([]GetReceiptMatchCandidatesRow, error) {
@@ -359,12 +360,12 @@ LIMIT COALESCE($1::int, 50)
 `
 
 type GetUnlinkedReceiptsRow struct {
-	ID           int64            `json:"id"`
-	Merchant     *string          `json:"merchant"`
-	PurchaseDate pgtype.Date      `json:"purchase_date"`
-	TotalAmount  *decimal.Decimal `json:"total_amount"`
-	Currency     *string          `json:"currency"`
-	CreatedAt    time.Time        `json:"created_at"`
+	ID           int64                  `json:"id"`
+	Merchant     *string                `json:"merchant"`
+	PurchaseDate *date.Date             `json:"purchase_date"`
+	TotalAmount  *money.Money           `json:"total_amount"`
+	Currency     *string                `json:"currency"`
+	CreatedAt    *timestamppb.Timestamp `json:"created_at"`
 }
 
 // Utility queries
@@ -521,7 +522,7 @@ type UpdateReceiptParams struct {
 	LinkStatus     *int16           `json:"link_status"`
 	MatchIds       []int64          `json:"match_ids"`
 	Merchant       *string          `json:"merchant"`
-	PurchaseDate   pgtype.Date      `json:"purchase_date"`
+	PurchaseDate   *date.Date       `json:"purchase_date"`
 	TotalAmount    *decimal.Decimal `json:"total_amount"`
 	Currency       *string          `json:"currency"`
 	TaxAmount      *decimal.Decimal `json:"tax_amount"`

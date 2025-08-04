@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        (unknown)
-// source: ariand/v1/common.proto
+// source: arian/v1/common.proto
 
 package ariandv1
 
@@ -35,7 +35,7 @@ type Location struct {
 
 func (x *Location) Reset() {
 	*x = Location{}
-	mi := &file_ariand_v1_common_proto_msgTypes[0]
+	mi := &file_arian_v1_common_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -47,7 +47,7 @@ func (x *Location) String() string {
 func (*Location) ProtoMessage() {}
 
 func (x *Location) ProtoReflect() protoreflect.Message {
-	mi := &file_ariand_v1_common_proto_msgTypes[0]
+	mi := &file_arian_v1_common_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -60,7 +60,7 @@ func (x *Location) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Location.ProtoReflect.Descriptor instead.
 func (*Location) Descriptor() ([]byte, []int) {
-	return file_ariand_v1_common_proto_rawDescGZIP(), []int{0}
+	return file_arian_v1_common_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Location) GetLatitude() float64 {
@@ -102,7 +102,7 @@ type Cursor struct {
 
 func (x *Cursor) Reset() {
 	*x = Cursor{}
-	mi := &file_ariand_v1_common_proto_msgTypes[1]
+	mi := &file_arian_v1_common_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -114,7 +114,7 @@ func (x *Cursor) String() string {
 func (*Cursor) ProtoMessage() {}
 
 func (x *Cursor) ProtoReflect() protoreflect.Message {
-	mi := &file_ariand_v1_common_proto_msgTypes[1]
+	mi := &file_arian_v1_common_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -127,7 +127,7 @@ func (x *Cursor) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Cursor.ProtoReflect.Descriptor instead.
 func (*Cursor) Descriptor() ([]byte, []int) {
-	return file_ariand_v1_common_proto_rawDescGZIP(), []int{1}
+	return file_arian_v1_common_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Cursor) GetDate() *timestamppb.Timestamp {
@@ -155,7 +155,7 @@ type TimeOfDay struct {
 
 func (x *TimeOfDay) Reset() {
 	*x = TimeOfDay{}
-	mi := &file_ariand_v1_common_proto_msgTypes[2]
+	mi := &file_arian_v1_common_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -167,7 +167,7 @@ func (x *TimeOfDay) String() string {
 func (*TimeOfDay) ProtoMessage() {}
 
 func (x *TimeOfDay) ProtoReflect() protoreflect.Message {
-	mi := &file_ariand_v1_common_proto_msgTypes[2]
+	mi := &file_arian_v1_common_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -180,7 +180,7 @@ func (x *TimeOfDay) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TimeOfDay.ProtoReflect.Descriptor instead.
 func (*TimeOfDay) Descriptor() ([]byte, []int) {
-	return file_ariand_v1_common_proto_rawDescGZIP(), []int{2}
+	return file_arian_v1_common_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *TimeOfDay) GetHours() int32 {
@@ -197,11 +197,11 @@ func (x *TimeOfDay) GetMinutes() int32 {
 	return 0
 }
 
-var File_ariand_v1_common_proto protoreflect.FileDescriptor
+var File_arian_v1_common_proto protoreflect.FileDescriptor
 
-const file_ariand_v1_common_proto_rawDesc = "" +
+const file_arian_v1_common_proto_rawDesc = "" +
 	"\n" +
-	"\x16ariand/v1/common.proto\x12\tariand.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x81\x01\n" +
+	"\x15arian/v1/common.proto\x12\barian.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x81\x01\n" +
 	"\bLocation\x12\x1a\n" +
 	"\blatitude\x18\x01 \x01(\x01R\blatitude\x12\x1c\n" +
 	"\tlongitude\x18\x02 \x01(\x01R\tlongitude\x12\x16\n" +
@@ -214,29 +214,29 @@ const file_ariand_v1_common_proto_rawDesc = "" +
 	"\x03_id\";\n" +
 	"\tTimeOfDay\x12\x14\n" +
 	"\x05hours\x18\x01 \x01(\x05R\x05hours\x12\x18\n" +
-	"\aminutes\x18\x02 \x01(\x05R\aminutesB\"Z ariand/gen/go/ariand/v1;ariandv1b\x06proto3"
+	"\aminutes\x18\x02 \x01(\x05R\aminutesB!Z\x1fariand/gen/go/arian/v1;ariandv1b\x06proto3"
 
 var (
-	file_ariand_v1_common_proto_rawDescOnce sync.Once
-	file_ariand_v1_common_proto_rawDescData []byte
+	file_arian_v1_common_proto_rawDescOnce sync.Once
+	file_arian_v1_common_proto_rawDescData []byte
 )
 
-func file_ariand_v1_common_proto_rawDescGZIP() []byte {
-	file_ariand_v1_common_proto_rawDescOnce.Do(func() {
-		file_ariand_v1_common_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_ariand_v1_common_proto_rawDesc), len(file_ariand_v1_common_proto_rawDesc)))
+func file_arian_v1_common_proto_rawDescGZIP() []byte {
+	file_arian_v1_common_proto_rawDescOnce.Do(func() {
+		file_arian_v1_common_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_arian_v1_common_proto_rawDesc), len(file_arian_v1_common_proto_rawDesc)))
 	})
-	return file_ariand_v1_common_proto_rawDescData
+	return file_arian_v1_common_proto_rawDescData
 }
 
-var file_ariand_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_ariand_v1_common_proto_goTypes = []any{
-	(*Location)(nil),              // 0: ariand.v1.Location
-	(*Cursor)(nil),                // 1: ariand.v1.Cursor
-	(*TimeOfDay)(nil),             // 2: ariand.v1.TimeOfDay
+var file_arian_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_arian_v1_common_proto_goTypes = []any{
+	(*Location)(nil),              // 0: arian.v1.Location
+	(*Cursor)(nil),                // 1: arian.v1.Cursor
+	(*TimeOfDay)(nil),             // 2: arian.v1.TimeOfDay
 	(*timestamppb.Timestamp)(nil), // 3: google.protobuf.Timestamp
 }
-var file_ariand_v1_common_proto_depIdxs = []int32{
-	3, // 0: ariand.v1.Cursor.date:type_name -> google.protobuf.Timestamp
+var file_arian_v1_common_proto_depIdxs = []int32{
+	3, // 0: arian.v1.Cursor.date:type_name -> google.protobuf.Timestamp
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
@@ -244,28 +244,28 @@ var file_ariand_v1_common_proto_depIdxs = []int32{
 	0, // [0:1] is the sub-list for field type_name
 }
 
-func init() { file_ariand_v1_common_proto_init() }
-func file_ariand_v1_common_proto_init() {
-	if File_ariand_v1_common_proto != nil {
+func init() { file_arian_v1_common_proto_init() }
+func file_arian_v1_common_proto_init() {
+	if File_arian_v1_common_proto != nil {
 		return
 	}
-	file_ariand_v1_common_proto_msgTypes[0].OneofWrappers = []any{}
-	file_ariand_v1_common_proto_msgTypes[1].OneofWrappers = []any{}
+	file_arian_v1_common_proto_msgTypes[0].OneofWrappers = []any{}
+	file_arian_v1_common_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ariand_v1_common_proto_rawDesc), len(file_ariand_v1_common_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_arian_v1_common_proto_rawDesc), len(file_arian_v1_common_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_ariand_v1_common_proto_goTypes,
-		DependencyIndexes: file_ariand_v1_common_proto_depIdxs,
-		MessageInfos:      file_ariand_v1_common_proto_msgTypes,
+		GoTypes:           file_arian_v1_common_proto_goTypes,
+		DependencyIndexes: file_arian_v1_common_proto_depIdxs,
+		MessageInfos:      file_arian_v1_common_proto_msgTypes,
 	}.Build()
-	File_ariand_v1_common_proto = out.File
-	file_ariand_v1_common_proto_goTypes = nil
-	file_ariand_v1_common_proto_depIdxs = nil
+	File_arian_v1_common_proto = out.File
+	file_arian_v1_common_proto_goTypes = nil
+	file_arian_v1_common_proto_depIdxs = nil
 }

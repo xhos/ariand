@@ -11,20 +11,21 @@ sql:
         emit_pointers_for_null_types: true
         emit_json_tags: true
         overrides:
-          # pg time to std time time
+          # timestamptz to proto timestamp
           - db_type: 'timestamptz'
             nullable: true
             go_type:
-              import: 'time'
-              type: 'Time'
+              import: 'google.golang.org/protobuf/types/known/timestamppb'
+              type: 'Timestamp'
               pointer: true
           - db_type: 'timestamptz'
             nullable: false
             go_type:
-              import: 'time'
-              type: 'Time'
+              import: 'google.golang.org/protobuf/types/known/timestamppb'
+              type: 'Timestamp'
+              pointer: true
 
-          # numeric to decimal
+          # numeric to decimal (default for non-money fields)
           - db_type: 'pg_catalog.numeric'
             nullable: false
             go_type:
@@ -35,6 +36,48 @@ sql:
             go_type:
               import: 'github.com/shopspring/decimal'
               type: 'Decimal'
+              pointer: true
+
+          # money fields - use google.type.Money
+          - column: 'accounts.anchor_balance'
+            go_type:
+              import: 'google.golang.org/genproto/googleapis/type/money'
+              type: 'Money'
+              pointer: true
+          - column: 'transactions.tx_amount'
+            go_type:
+              import: 'google.golang.org/genproto/googleapis/type/money'
+              type: 'Money'
+              pointer: true
+          - column: 'transactions.balance_after'
+            go_type:
+              import: 'google.golang.org/genproto/googleapis/type/money'
+              type: 'Money'
+              pointer: true
+          - column: 'transactions.foreign_amount'
+            go_type:
+              import: 'google.golang.org/genproto/googleapis/type/money'
+              type: 'Money'
+              pointer: true
+          - column: 'receipts.total_amount'
+            go_type:
+              import: 'google.golang.org/genproto/googleapis/type/money'
+              type: 'Money'
+              pointer: true
+          - column: 'receipts.tax_amount'
+            go_type:
+              import: 'google.golang.org/genproto/googleapis/type/money'
+              type: 'Money'
+              pointer: true
+          - column: 'receipt_items.unit_price'
+            go_type:
+              import: 'google.golang.org/genproto/googleapis/type/money'
+              type: 'Money'
+              pointer: true
+          - column: 'receipt_items.line_total'
+            go_type:
+              import: 'google.golang.org/genproto/googleapis/type/money'
+              type: 'Money'
               pointer: true
 
           # pg json to go json
@@ -63,28 +106,42 @@ sql:
               type: 'UUID'
               pointer: true
 
+          # date to proto date
+          - db_type: 'date'
+            nullable: false
+            go_type:
+              import: 'google.golang.org/genproto/googleapis/type/date'
+              type: 'Date'
+              pointer: true
+          - db_type: 'date'
+            nullable: true
+            go_type:
+              import: 'google.golang.org/genproto/googleapis/type/date'
+              type: 'Date'
+              pointer: true
+
           # map columns directly to proto enums
           - column: 'accounts.account_type'
             go_type:
-              import: 'ariand/gen/go/ariand/v1'
+              import: 'ariand/gen/go/arian/v1'
               type: 'AccountType'
           - column: 'transactions.tx_direction'
             go_type:
-              import: 'ariand/gen/go/ariand/v1'
+              import: 'ariand/gen/go/arian/v1'
               type: 'TransactionDirection'
           - column: 'transactions.cat_status'
             go_type:
-              import: 'ariand/gen/go/ariand/v1'
+              import: 'ariand/gen/go/arian/v1'
               type: 'CategorizationStatus'
           - column: 'receipts.engine'
             go_type:
-              import: 'ariand/gen/go/ariand/v1'
+              import: 'ariand/gen/go/arian/v1'
               type: 'ReceiptEngine'
           - column: 'receipts.parse_status'
             go_type:
-              import: 'ariand/gen/go/ariand/v1'
+              import: 'ariand/gen/go/arian/v1'
               type: 'ReceiptParseStatus'
           - column: 'receipts.link_status'
             go_type:
-              import: 'ariand/gen/go/ariand/v1'
+              import: 'ariand/gen/go/arian/v1'
               type: 'ReceiptLinkStatus'

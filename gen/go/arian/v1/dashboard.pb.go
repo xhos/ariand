@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        (unknown)
-// source: ariand/v1/dashboard.proto
+// source: arian/v1/dashboard.proto
 
 package ariandv1
 
@@ -35,7 +35,7 @@ type TrendPoint struct {
 
 func (x *TrendPoint) Reset() {
 	*x = TrendPoint{}
-	mi := &file_ariand_v1_dashboard_proto_msgTypes[0]
+	mi := &file_arian_v1_dashboard_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -47,7 +47,7 @@ func (x *TrendPoint) String() string {
 func (*TrendPoint) ProtoMessage() {}
 
 func (x *TrendPoint) ProtoReflect() protoreflect.Message {
-	mi := &file_ariand_v1_dashboard_proto_msgTypes[0]
+	mi := &file_arian_v1_dashboard_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -60,7 +60,7 @@ func (x *TrendPoint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrendPoint.ProtoReflect.Descriptor instead.
 func (*TrendPoint) Descriptor() ([]byte, []int) {
-	return file_ariand_v1_dashboard_proto_rawDescGZIP(), []int{0}
+	return file_arian_v1_dashboard_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *TrendPoint) GetDate() *date.Date {
@@ -97,7 +97,7 @@ type MonthlyComparison struct {
 
 func (x *MonthlyComparison) Reset() {
 	*x = MonthlyComparison{}
-	mi := &file_ariand_v1_dashboard_proto_msgTypes[1]
+	mi := &file_arian_v1_dashboard_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -109,7 +109,7 @@ func (x *MonthlyComparison) String() string {
 func (*MonthlyComparison) ProtoMessage() {}
 
 func (x *MonthlyComparison) ProtoReflect() protoreflect.Message {
-	mi := &file_ariand_v1_dashboard_proto_msgTypes[1]
+	mi := &file_arian_v1_dashboard_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -122,7 +122,7 @@ func (x *MonthlyComparison) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MonthlyComparison.ProtoReflect.Descriptor instead.
 func (*MonthlyComparison) Descriptor() ([]byte, []int) {
-	return file_ariand_v1_dashboard_proto_rawDescGZIP(), []int{1}
+	return file_arian_v1_dashboard_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *MonthlyComparison) GetMonth() string {
@@ -168,7 +168,7 @@ type DashboardSummary struct {
 
 func (x *DashboardSummary) Reset() {
 	*x = DashboardSummary{}
-	mi := &file_ariand_v1_dashboard_proto_msgTypes[2]
+	mi := &file_arian_v1_dashboard_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -180,7 +180,7 @@ func (x *DashboardSummary) String() string {
 func (*DashboardSummary) ProtoMessage() {}
 
 func (x *DashboardSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_ariand_v1_dashboard_proto_msgTypes[2]
+	mi := &file_arian_v1_dashboard_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -193,7 +193,7 @@ func (x *DashboardSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DashboardSummary.ProtoReflect.Descriptor instead.
 func (*DashboardSummary) Descriptor() ([]byte, []int) {
-	return file_ariand_v1_dashboard_proto_rawDescGZIP(), []int{2}
+	return file_arian_v1_dashboard_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *DashboardSummary) GetTotalAccounts() int64 {
@@ -252,7 +252,7 @@ type TopCategory struct {
 
 func (x *TopCategory) Reset() {
 	*x = TopCategory{}
-	mi := &file_ariand_v1_dashboard_proto_msgTypes[3]
+	mi := &file_arian_v1_dashboard_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -264,7 +264,7 @@ func (x *TopCategory) String() string {
 func (*TopCategory) ProtoMessage() {}
 
 func (x *TopCategory) ProtoReflect() protoreflect.Message {
-	mi := &file_ariand_v1_dashboard_proto_msgTypes[3]
+	mi := &file_arian_v1_dashboard_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -277,7 +277,7 @@ func (x *TopCategory) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopCategory.ProtoReflect.Descriptor instead.
 func (*TopCategory) Descriptor() ([]byte, []int) {
-	return file_ariand_v1_dashboard_proto_rawDescGZIP(), []int{3}
+	return file_arian_v1_dashboard_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *TopCategory) GetSlug() string {
@@ -328,7 +328,7 @@ type TopMerchant struct {
 
 func (x *TopMerchant) Reset() {
 	*x = TopMerchant{}
-	mi := &file_ariand_v1_dashboard_proto_msgTypes[4]
+	mi := &file_arian_v1_dashboard_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -340,7 +340,7 @@ func (x *TopMerchant) String() string {
 func (*TopMerchant) ProtoMessage() {}
 
 func (x *TopMerchant) ProtoReflect() protoreflect.Message {
-	mi := &file_ariand_v1_dashboard_proto_msgTypes[4]
+	mi := &file_arian_v1_dashboard_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -353,7 +353,7 @@ func (x *TopMerchant) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopMerchant.ProtoReflect.Descriptor instead.
 func (*TopMerchant) Descriptor() ([]byte, []int) {
-	return file_ariand_v1_dashboard_proto_rawDescGZIP(), []int{4}
+	return file_arian_v1_dashboard_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *TopMerchant) GetMerchant() string {
@@ -384,11 +384,11 @@ func (x *TopMerchant) GetAvgAmount() *money.Money {
 	return nil
 }
 
-var File_ariand_v1_dashboard_proto protoreflect.FileDescriptor
+var File_arian_v1_dashboard_proto protoreflect.FileDescriptor
 
-const file_ariand_v1_dashboard_proto_rawDesc = "" +
+const file_arian_v1_dashboard_proto_rawDesc = "" +
 	"\n" +
-	"\x19ariand/v1/dashboard.proto\x12\tariand.v1\x1a\x16google/type/date.proto\x1a\x17google/type/money.proto\"\x8f\x01\n" +
+	"\x18arian/v1/dashboard.proto\x12\barian.v1\x1a\x16google/type/date.proto\x1a\x17google/type/money.proto\"\x8f\x01\n" +
 	"\n" +
 	"TrendPoint\x12%\n" +
 	"\x04date\x18\x01 \x01(\v2\x11.google.type.DateR\x04date\x12*\n" +
@@ -417,42 +417,42 @@ const file_ariand_v1_dashboard_proto_rawDesc = "" +
 	"\x11transaction_count\x18\x02 \x01(\x03R\x10transactionCount\x125\n" +
 	"\ftotal_amount\x18\x03 \x01(\v2\x12.google.type.MoneyR\vtotalAmount\x121\n" +
 	"\n" +
-	"avg_amount\x18\x04 \x01(\v2\x12.google.type.MoneyR\tavgAmountB\"Z ariand/gen/go/ariand/v1;ariandv1b\x06proto3"
+	"avg_amount\x18\x04 \x01(\v2\x12.google.type.MoneyR\tavgAmountB!Z\x1fariand/gen/go/arian/v1;ariandv1b\x06proto3"
 
 var (
-	file_ariand_v1_dashboard_proto_rawDescOnce sync.Once
-	file_ariand_v1_dashboard_proto_rawDescData []byte
+	file_arian_v1_dashboard_proto_rawDescOnce sync.Once
+	file_arian_v1_dashboard_proto_rawDescData []byte
 )
 
-func file_ariand_v1_dashboard_proto_rawDescGZIP() []byte {
-	file_ariand_v1_dashboard_proto_rawDescOnce.Do(func() {
-		file_ariand_v1_dashboard_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_ariand_v1_dashboard_proto_rawDesc), len(file_ariand_v1_dashboard_proto_rawDesc)))
+func file_arian_v1_dashboard_proto_rawDescGZIP() []byte {
+	file_arian_v1_dashboard_proto_rawDescOnce.Do(func() {
+		file_arian_v1_dashboard_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_arian_v1_dashboard_proto_rawDesc), len(file_arian_v1_dashboard_proto_rawDesc)))
 	})
-	return file_ariand_v1_dashboard_proto_rawDescData
+	return file_arian_v1_dashboard_proto_rawDescData
 }
 
-var file_ariand_v1_dashboard_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
-var file_ariand_v1_dashboard_proto_goTypes = []any{
-	(*TrendPoint)(nil),        // 0: ariand.v1.TrendPoint
-	(*MonthlyComparison)(nil), // 1: ariand.v1.MonthlyComparison
-	(*DashboardSummary)(nil),  // 2: ariand.v1.DashboardSummary
-	(*TopCategory)(nil),       // 3: ariand.v1.TopCategory
-	(*TopMerchant)(nil),       // 4: ariand.v1.TopMerchant
+var file_arian_v1_dashboard_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_arian_v1_dashboard_proto_goTypes = []any{
+	(*TrendPoint)(nil),        // 0: arian.v1.TrendPoint
+	(*MonthlyComparison)(nil), // 1: arian.v1.MonthlyComparison
+	(*DashboardSummary)(nil),  // 2: arian.v1.DashboardSummary
+	(*TopCategory)(nil),       // 3: arian.v1.TopCategory
+	(*TopMerchant)(nil),       // 4: arian.v1.TopMerchant
 	(*date.Date)(nil),         // 5: google.type.Date
 	(*money.Money)(nil),       // 6: google.type.Money
 }
-var file_ariand_v1_dashboard_proto_depIdxs = []int32{
-	5,  // 0: ariand.v1.TrendPoint.date:type_name -> google.type.Date
-	6,  // 1: ariand.v1.TrendPoint.income:type_name -> google.type.Money
-	6,  // 2: ariand.v1.TrendPoint.expenses:type_name -> google.type.Money
-	6,  // 3: ariand.v1.MonthlyComparison.income:type_name -> google.type.Money
-	6,  // 4: ariand.v1.MonthlyComparison.expenses:type_name -> google.type.Money
-	6,  // 5: ariand.v1.MonthlyComparison.net:type_name -> google.type.Money
-	6,  // 6: ariand.v1.DashboardSummary.total_income:type_name -> google.type.Money
-	6,  // 7: ariand.v1.DashboardSummary.total_expenses:type_name -> google.type.Money
-	6,  // 8: ariand.v1.TopCategory.total_amount:type_name -> google.type.Money
-	6,  // 9: ariand.v1.TopMerchant.total_amount:type_name -> google.type.Money
-	6,  // 10: ariand.v1.TopMerchant.avg_amount:type_name -> google.type.Money
+var file_arian_v1_dashboard_proto_depIdxs = []int32{
+	5,  // 0: arian.v1.TrendPoint.date:type_name -> google.type.Date
+	6,  // 1: arian.v1.TrendPoint.income:type_name -> google.type.Money
+	6,  // 2: arian.v1.TrendPoint.expenses:type_name -> google.type.Money
+	6,  // 3: arian.v1.MonthlyComparison.income:type_name -> google.type.Money
+	6,  // 4: arian.v1.MonthlyComparison.expenses:type_name -> google.type.Money
+	6,  // 5: arian.v1.MonthlyComparison.net:type_name -> google.type.Money
+	6,  // 6: arian.v1.DashboardSummary.total_income:type_name -> google.type.Money
+	6,  // 7: arian.v1.DashboardSummary.total_expenses:type_name -> google.type.Money
+	6,  // 8: arian.v1.TopCategory.total_amount:type_name -> google.type.Money
+	6,  // 9: arian.v1.TopMerchant.total_amount:type_name -> google.type.Money
+	6,  // 10: arian.v1.TopMerchant.avg_amount:type_name -> google.type.Money
 	11, // [11:11] is the sub-list for method output_type
 	11, // [11:11] is the sub-list for method input_type
 	11, // [11:11] is the sub-list for extension type_name
@@ -460,26 +460,26 @@ var file_ariand_v1_dashboard_proto_depIdxs = []int32{
 	0,  // [0:11] is the sub-list for field type_name
 }
 
-func init() { file_ariand_v1_dashboard_proto_init() }
-func file_ariand_v1_dashboard_proto_init() {
-	if File_ariand_v1_dashboard_proto != nil {
+func init() { file_arian_v1_dashboard_proto_init() }
+func file_arian_v1_dashboard_proto_init() {
+	if File_arian_v1_dashboard_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ariand_v1_dashboard_proto_rawDesc), len(file_ariand_v1_dashboard_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_arian_v1_dashboard_proto_rawDesc), len(file_arian_v1_dashboard_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_ariand_v1_dashboard_proto_goTypes,
-		DependencyIndexes: file_ariand_v1_dashboard_proto_depIdxs,
-		MessageInfos:      file_ariand_v1_dashboard_proto_msgTypes,
+		GoTypes:           file_arian_v1_dashboard_proto_goTypes,
+		DependencyIndexes: file_arian_v1_dashboard_proto_depIdxs,
+		MessageInfos:      file_arian_v1_dashboard_proto_msgTypes,
 	}.Build()
-	File_ariand_v1_dashboard_proto = out.File
-	file_ariand_v1_dashboard_proto_goTypes = nil
-	file_ariand_v1_dashboard_proto_depIdxs = nil
+	File_arian_v1_dashboard_proto = out.File
+	file_arian_v1_dashboard_proto_goTypes = nil
+	file_arian_v1_dashboard_proto_depIdxs = nil
 }

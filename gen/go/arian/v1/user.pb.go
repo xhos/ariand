@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        (unknown)
-// source: ariand/v1/user.proto
+// source: arian/v1/user.proto
 
 package ariandv1
 
@@ -36,7 +36,7 @@ type User struct {
 
 func (x *User) Reset() {
 	*x = User{}
-	mi := &file_ariand_v1_user_proto_msgTypes[0]
+	mi := &file_arian_v1_user_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -48,7 +48,7 @@ func (x *User) String() string {
 func (*User) ProtoMessage() {}
 
 func (x *User) ProtoReflect() protoreflect.Message {
-	mi := &file_ariand_v1_user_proto_msgTypes[0]
+	mi := &file_arian_v1_user_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -61,7 +61,7 @@ func (x *User) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use User.ProtoReflect.Descriptor instead.
 func (*User) Descriptor() ([]byte, []int) {
-	return file_ariand_v1_user_proto_rawDescGZIP(), []int{0}
+	return file_arian_v1_user_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *User) GetId() string {
@@ -114,7 +114,7 @@ type UserCredential struct {
 
 func (x *UserCredential) Reset() {
 	*x = UserCredential{}
-	mi := &file_ariand_v1_user_proto_msgTypes[1]
+	mi := &file_arian_v1_user_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -126,7 +126,7 @@ func (x *UserCredential) String() string {
 func (*UserCredential) ProtoMessage() {}
 
 func (x *UserCredential) ProtoReflect() protoreflect.Message {
-	mi := &file_ariand_v1_user_proto_msgTypes[1]
+	mi := &file_arian_v1_user_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -139,7 +139,7 @@ func (x *UserCredential) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserCredential.ProtoReflect.Descriptor instead.
 func (*UserCredential) Descriptor() ([]byte, []int) {
-	return file_ariand_v1_user_proto_rawDescGZIP(), []int{1}
+	return file_arian_v1_user_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *UserCredential) GetId() string {
@@ -184,11 +184,11 @@ func (x *UserCredential) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-var File_ariand_v1_user_proto protoreflect.FileDescriptor
+var File_arian_v1_user_proto protoreflect.FileDescriptor
 
-const file_ariand_v1_user_proto_rawDesc = "" +
+const file_arian_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x14ariand/v1/user.proto\x12\tariand.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xdb\x01\n" +
+	"\x13arian/v1/user.proto\x12\barian.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xdb\x01\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12&\n" +
@@ -207,30 +207,30 @@ const file_ariand_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"sign_count\x18\x05 \x01(\x03R\tsignCount\x129\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAtB\"Z ariand/gen/go/ariand/v1;ariandv1b\x06proto3"
+	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAtB!Z\x1fariand/gen/go/arian/v1;ariandv1b\x06proto3"
 
 var (
-	file_ariand_v1_user_proto_rawDescOnce sync.Once
-	file_ariand_v1_user_proto_rawDescData []byte
+	file_arian_v1_user_proto_rawDescOnce sync.Once
+	file_arian_v1_user_proto_rawDescData []byte
 )
 
-func file_ariand_v1_user_proto_rawDescGZIP() []byte {
-	file_ariand_v1_user_proto_rawDescOnce.Do(func() {
-		file_ariand_v1_user_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_ariand_v1_user_proto_rawDesc), len(file_ariand_v1_user_proto_rawDesc)))
+func file_arian_v1_user_proto_rawDescGZIP() []byte {
+	file_arian_v1_user_proto_rawDescOnce.Do(func() {
+		file_arian_v1_user_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_arian_v1_user_proto_rawDesc), len(file_arian_v1_user_proto_rawDesc)))
 	})
-	return file_ariand_v1_user_proto_rawDescData
+	return file_arian_v1_user_proto_rawDescData
 }
 
-var file_ariand_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_ariand_v1_user_proto_goTypes = []any{
-	(*User)(nil),                  // 0: ariand.v1.User
-	(*UserCredential)(nil),        // 1: ariand.v1.UserCredential
+var file_arian_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_arian_v1_user_proto_goTypes = []any{
+	(*User)(nil),                  // 0: arian.v1.User
+	(*UserCredential)(nil),        // 1: arian.v1.UserCredential
 	(*timestamppb.Timestamp)(nil), // 2: google.protobuf.Timestamp
 }
-var file_ariand_v1_user_proto_depIdxs = []int32{
-	2, // 0: ariand.v1.User.created_at:type_name -> google.protobuf.Timestamp
-	2, // 1: ariand.v1.User.updated_at:type_name -> google.protobuf.Timestamp
-	2, // 2: ariand.v1.UserCredential.created_at:type_name -> google.protobuf.Timestamp
+var file_arian_v1_user_proto_depIdxs = []int32{
+	2, // 0: arian.v1.User.created_at:type_name -> google.protobuf.Timestamp
+	2, // 1: arian.v1.User.updated_at:type_name -> google.protobuf.Timestamp
+	2, // 2: arian.v1.UserCredential.created_at:type_name -> google.protobuf.Timestamp
 	3, // [3:3] is the sub-list for method output_type
 	3, // [3:3] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
@@ -238,27 +238,27 @@ var file_ariand_v1_user_proto_depIdxs = []int32{
 	0, // [0:3] is the sub-list for field type_name
 }
 
-func init() { file_ariand_v1_user_proto_init() }
-func file_ariand_v1_user_proto_init() {
-	if File_ariand_v1_user_proto != nil {
+func init() { file_arian_v1_user_proto_init() }
+func file_arian_v1_user_proto_init() {
+	if File_arian_v1_user_proto != nil {
 		return
 	}
-	file_ariand_v1_user_proto_msgTypes[0].OneofWrappers = []any{}
+	file_arian_v1_user_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ariand_v1_user_proto_rawDesc), len(file_ariand_v1_user_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_arian_v1_user_proto_rawDesc), len(file_arian_v1_user_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_ariand_v1_user_proto_goTypes,
-		DependencyIndexes: file_ariand_v1_user_proto_depIdxs,
-		MessageInfos:      file_ariand_v1_user_proto_msgTypes,
+		GoTypes:           file_arian_v1_user_proto_goTypes,
+		DependencyIndexes: file_arian_v1_user_proto_depIdxs,
+		MessageInfos:      file_arian_v1_user_proto_msgTypes,
 	}.Build()
-	File_ariand_v1_user_proto = out.File
-	file_ariand_v1_user_proto_goTypes = nil
-	file_ariand_v1_user_proto_depIdxs = nil
+	File_arian_v1_user_proto = out.File
+	file_arian_v1_user_proto_goTypes = nil
+	file_arian_v1_user_proto_depIdxs = nil
 }

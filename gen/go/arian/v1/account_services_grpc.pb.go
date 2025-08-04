@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: ariand/v1/account_services.proto
+// source: arian/v1/account_services.proto
 
 package ariandv1
 
@@ -19,15 +19,17 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AccountService_ListAccounts_FullMethodName        = "/ariand.v1.AccountService/ListAccounts"
-	AccountService_GetAccount_FullMethodName          = "/ariand.v1.AccountService/GetAccount"
-	AccountService_CreateAccount_FullMethodName       = "/ariand.v1.AccountService/CreateAccount"
-	AccountService_UpdateAccount_FullMethodName       = "/ariand.v1.AccountService/UpdateAccount"
-	AccountService_DeleteAccount_FullMethodName       = "/ariand.v1.AccountService/DeleteAccount"
-	AccountService_SetAccountAnchor_FullMethodName    = "/ariand.v1.AccountService/SetAccountAnchor"
-	AccountService_GetAccountBalance_FullMethodName   = "/ariand.v1.AccountService/GetAccountBalance"
-	AccountService_GetAccountsCount_FullMethodName    = "/ariand.v1.AccountService/GetAccountsCount"
-	AccountService_SyncAccountBalances_FullMethodName = "/ariand.v1.AccountService/SyncAccountBalances"
+	AccountService_ListAccounts_FullMethodName           = "/arian.v1.AccountService/ListAccounts"
+	AccountService_GetAccount_FullMethodName             = "/arian.v1.AccountService/GetAccount"
+	AccountService_CreateAccount_FullMethodName          = "/arian.v1.AccountService/CreateAccount"
+	AccountService_UpdateAccount_FullMethodName          = "/arian.v1.AccountService/UpdateAccount"
+	AccountService_DeleteAccount_FullMethodName          = "/arian.v1.AccountService/DeleteAccount"
+	AccountService_SetAccountAnchor_FullMethodName       = "/arian.v1.AccountService/SetAccountAnchor"
+	AccountService_GetAccountBalance_FullMethodName      = "/arian.v1.AccountService/GetAccountBalance"
+	AccountService_GetAnchorBalance_FullMethodName       = "/arian.v1.AccountService/GetAnchorBalance"
+	AccountService_GetAccountsCount_FullMethodName       = "/arian.v1.AccountService/GetAccountsCount"
+	AccountService_CheckUserAccountAccess_FullMethodName = "/arian.v1.AccountService/CheckUserAccountAccess"
+	AccountService_SyncAccountBalances_FullMethodName    = "/arian.v1.AccountService/SyncAccountBalances"
 )
 
 // AccountServiceClient is the client API for AccountService service.
@@ -43,7 +45,9 @@ type AccountServiceClient interface {
 	DeleteAccount(ctx context.Context, in *DeleteAccountRequest, opts ...grpc.CallOption) (*DeleteAccountResponse, error)
 	SetAccountAnchor(ctx context.Context, in *SetAccountAnchorRequest, opts ...grpc.CallOption) (*SetAccountAnchorResponse, error)
 	GetAccountBalance(ctx context.Context, in *GetAccountBalanceRequest, opts ...grpc.CallOption) (*GetAccountBalanceResponse, error)
+	GetAnchorBalance(ctx context.Context, in *GetAnchorBalanceRequest, opts ...grpc.CallOption) (*GetAnchorBalanceResponse, error)
 	GetAccountsCount(ctx context.Context, in *GetAccountsCountRequest, opts ...grpc.CallOption) (*GetAccountsCountResponse, error)
+	CheckUserAccountAccess(ctx context.Context, in *CheckUserAccountAccessRequest, opts ...grpc.CallOption) (*CheckUserAccountAccessResponse, error)
 	SyncAccountBalances(ctx context.Context, in *SyncAccountBalancesRequest, opts ...grpc.CallOption) (*SyncAccountBalancesResponse, error)
 }
 
@@ -125,10 +129,30 @@ func (c *accountServiceClient) GetAccountBalance(ctx context.Context, in *GetAcc
 	return out, nil
 }
 
+func (c *accountServiceClient) GetAnchorBalance(ctx context.Context, in *GetAnchorBalanceRequest, opts ...grpc.CallOption) (*GetAnchorBalanceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAnchorBalanceResponse)
+	err := c.cc.Invoke(ctx, AccountService_GetAnchorBalance_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *accountServiceClient) GetAccountsCount(ctx context.Context, in *GetAccountsCountRequest, opts ...grpc.CallOption) (*GetAccountsCountResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetAccountsCountResponse)
 	err := c.cc.Invoke(ctx, AccountService_GetAccountsCount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *accountServiceClient) CheckUserAccountAccess(ctx context.Context, in *CheckUserAccountAccessRequest, opts ...grpc.CallOption) (*CheckUserAccountAccessResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckUserAccountAccessResponse)
+	err := c.cc.Invoke(ctx, AccountService_CheckUserAccountAccess_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +182,9 @@ type AccountServiceServer interface {
 	DeleteAccount(context.Context, *DeleteAccountRequest) (*DeleteAccountResponse, error)
 	SetAccountAnchor(context.Context, *SetAccountAnchorRequest) (*SetAccountAnchorResponse, error)
 	GetAccountBalance(context.Context, *GetAccountBalanceRequest) (*GetAccountBalanceResponse, error)
+	GetAnchorBalance(context.Context, *GetAnchorBalanceRequest) (*GetAnchorBalanceResponse, error)
 	GetAccountsCount(context.Context, *GetAccountsCountRequest) (*GetAccountsCountResponse, error)
+	CheckUserAccountAccess(context.Context, *CheckUserAccountAccessRequest) (*CheckUserAccountAccessResponse, error)
 	SyncAccountBalances(context.Context, *SyncAccountBalancesRequest) (*SyncAccountBalancesResponse, error)
 }
 
@@ -190,8 +216,14 @@ func (UnimplementedAccountServiceServer) SetAccountAnchor(context.Context, *SetA
 func (UnimplementedAccountServiceServer) GetAccountBalance(context.Context, *GetAccountBalanceRequest) (*GetAccountBalanceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAccountBalance not implemented")
 }
+func (UnimplementedAccountServiceServer) GetAnchorBalance(context.Context, *GetAnchorBalanceRequest) (*GetAnchorBalanceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAnchorBalance not implemented")
+}
 func (UnimplementedAccountServiceServer) GetAccountsCount(context.Context, *GetAccountsCountRequest) (*GetAccountsCountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAccountsCount not implemented")
+}
+func (UnimplementedAccountServiceServer) CheckUserAccountAccess(context.Context, *CheckUserAccountAccessRequest) (*CheckUserAccountAccessResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckUserAccountAccess not implemented")
 }
 func (UnimplementedAccountServiceServer) SyncAccountBalances(context.Context, *SyncAccountBalancesRequest) (*SyncAccountBalancesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SyncAccountBalances not implemented")
@@ -342,6 +374,24 @@ func _AccountService_GetAccountBalance_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AccountService_GetAnchorBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAnchorBalanceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountServiceServer).GetAnchorBalance(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountService_GetAnchorBalance_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountServiceServer).GetAnchorBalance(ctx, req.(*GetAnchorBalanceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AccountService_GetAccountsCount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetAccountsCountRequest)
 	if err := dec(in); err != nil {
@@ -356,6 +406,24 @@ func _AccountService_GetAccountsCount_Handler(srv interface{}, ctx context.Conte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AccountServiceServer).GetAccountsCount(ctx, req.(*GetAccountsCountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AccountService_CheckUserAccountAccess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckUserAccountAccessRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountServiceServer).CheckUserAccountAccess(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountService_CheckUserAccountAccess_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountServiceServer).CheckUserAccountAccess(ctx, req.(*CheckUserAccountAccessRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -382,7 +450,7 @@ func _AccountService_SyncAccountBalances_Handler(srv interface{}, ctx context.Co
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var AccountService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "ariand.v1.AccountService",
+	ServiceName: "arian.v1.AccountService",
 	HandlerType: (*AccountServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -414,8 +482,16 @@ var AccountService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AccountService_GetAccountBalance_Handler,
 		},
 		{
+			MethodName: "GetAnchorBalance",
+			Handler:    _AccountService_GetAnchorBalance_Handler,
+		},
+		{
 			MethodName: "GetAccountsCount",
 			Handler:    _AccountService_GetAccountsCount_Handler,
+		},
+		{
+			MethodName: "CheckUserAccountAccess",
+			Handler:    _AccountService_CheckUserAccountAccess_Handler,
 		},
 		{
 			MethodName: "SyncAccountBalances",
@@ -423,16 +499,18 @@ var AccountService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "ariand/v1/account_services.proto",
+	Metadata: "arian/v1/account_services.proto",
 }
 
 const (
-	AccountCollaborationService_AddCollaborator_FullMethodName        = "/ariand.v1.AccountCollaborationService/AddCollaborator"
-	AccountCollaborationService_RemoveCollaborator_FullMethodName     = "/ariand.v1.AccountCollaborationService/RemoveCollaborator"
-	AccountCollaborationService_ListCollaborators_FullMethodName      = "/ariand.v1.AccountCollaborationService/ListCollaborators"
-	AccountCollaborationService_ListUserCollaborations_FullMethodName = "/ariand.v1.AccountCollaborationService/ListUserCollaborations"
-	AccountCollaborationService_LeaveCollaboration_FullMethodName     = "/ariand.v1.AccountCollaborationService/LeaveCollaboration"
-	AccountCollaborationService_TransferOwnership_FullMethodName      = "/ariand.v1.AccountCollaborationService/TransferOwnership"
+	AccountCollaborationService_AddCollaborator_FullMethodName        = "/arian.v1.AccountCollaborationService/AddCollaborator"
+	AccountCollaborationService_RemoveCollaborator_FullMethodName     = "/arian.v1.AccountCollaborationService/RemoveCollaborator"
+	AccountCollaborationService_ListCollaborators_FullMethodName      = "/arian.v1.AccountCollaborationService/ListCollaborators"
+	AccountCollaborationService_GetCollaboratorCount_FullMethodName   = "/arian.v1.AccountCollaborationService/GetCollaboratorCount"
+	AccountCollaborationService_CheckCollaborator_FullMethodName      = "/arian.v1.AccountCollaborationService/CheckCollaborator"
+	AccountCollaborationService_ListUserCollaborations_FullMethodName = "/arian.v1.AccountCollaborationService/ListUserCollaborations"
+	AccountCollaborationService_LeaveCollaboration_FullMethodName     = "/arian.v1.AccountCollaborationService/LeaveCollaboration"
+	AccountCollaborationService_TransferOwnership_FullMethodName      = "/arian.v1.AccountCollaborationService/TransferOwnership"
 )
 
 // AccountCollaborationServiceClient is the client API for AccountCollaborationService service.
@@ -444,6 +522,8 @@ type AccountCollaborationServiceClient interface {
 	AddCollaborator(ctx context.Context, in *AddCollaboratorRequest, opts ...grpc.CallOption) (*AddCollaboratorResponse, error)
 	RemoveCollaborator(ctx context.Context, in *RemoveCollaboratorRequest, opts ...grpc.CallOption) (*RemoveCollaboratorResponse, error)
 	ListCollaborators(ctx context.Context, in *ListCollaboratorsRequest, opts ...grpc.CallOption) (*ListCollaboratorsResponse, error)
+	GetCollaboratorCount(ctx context.Context, in *GetCollaboratorCountRequest, opts ...grpc.CallOption) (*GetCollaboratorCountResponse, error)
+	CheckCollaborator(ctx context.Context, in *CheckCollaboratorRequest, opts ...grpc.CallOption) (*CheckCollaboratorResponse, error)
 	ListUserCollaborations(ctx context.Context, in *ListUserCollaborationsRequest, opts ...grpc.CallOption) (*ListUserCollaborationsResponse, error)
 	LeaveCollaboration(ctx context.Context, in *LeaveCollaborationRequest, opts ...grpc.CallOption) (*LeaveCollaborationResponse, error)
 	TransferOwnership(ctx context.Context, in *TransferOwnershipRequest, opts ...grpc.CallOption) (*TransferOwnershipResponse, error)
@@ -481,6 +561,26 @@ func (c *accountCollaborationServiceClient) ListCollaborators(ctx context.Contex
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListCollaboratorsResponse)
 	err := c.cc.Invoke(ctx, AccountCollaborationService_ListCollaborators_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *accountCollaborationServiceClient) GetCollaboratorCount(ctx context.Context, in *GetCollaboratorCountRequest, opts ...grpc.CallOption) (*GetCollaboratorCountResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCollaboratorCountResponse)
+	err := c.cc.Invoke(ctx, AccountCollaborationService_GetCollaboratorCount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *accountCollaborationServiceClient) CheckCollaborator(ctx context.Context, in *CheckCollaboratorRequest, opts ...grpc.CallOption) (*CheckCollaboratorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckCollaboratorResponse)
+	err := c.cc.Invoke(ctx, AccountCollaborationService_CheckCollaborator_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -526,6 +626,8 @@ type AccountCollaborationServiceServer interface {
 	AddCollaborator(context.Context, *AddCollaboratorRequest) (*AddCollaboratorResponse, error)
 	RemoveCollaborator(context.Context, *RemoveCollaboratorRequest) (*RemoveCollaboratorResponse, error)
 	ListCollaborators(context.Context, *ListCollaboratorsRequest) (*ListCollaboratorsResponse, error)
+	GetCollaboratorCount(context.Context, *GetCollaboratorCountRequest) (*GetCollaboratorCountResponse, error)
+	CheckCollaborator(context.Context, *CheckCollaboratorRequest) (*CheckCollaboratorResponse, error)
 	ListUserCollaborations(context.Context, *ListUserCollaborationsRequest) (*ListUserCollaborationsResponse, error)
 	LeaveCollaboration(context.Context, *LeaveCollaborationRequest) (*LeaveCollaborationResponse, error)
 	TransferOwnership(context.Context, *TransferOwnershipRequest) (*TransferOwnershipResponse, error)
@@ -546,6 +648,12 @@ func (UnimplementedAccountCollaborationServiceServer) RemoveCollaborator(context
 }
 func (UnimplementedAccountCollaborationServiceServer) ListCollaborators(context.Context, *ListCollaboratorsRequest) (*ListCollaboratorsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListCollaborators not implemented")
+}
+func (UnimplementedAccountCollaborationServiceServer) GetCollaboratorCount(context.Context, *GetCollaboratorCountRequest) (*GetCollaboratorCountResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCollaboratorCount not implemented")
+}
+func (UnimplementedAccountCollaborationServiceServer) CheckCollaborator(context.Context, *CheckCollaboratorRequest) (*CheckCollaboratorResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckCollaborator not implemented")
 }
 func (UnimplementedAccountCollaborationServiceServer) ListUserCollaborations(context.Context, *ListUserCollaborationsRequest) (*ListUserCollaborationsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListUserCollaborations not implemented")
@@ -630,6 +738,42 @@ func _AccountCollaborationService_ListCollaborators_Handler(srv interface{}, ctx
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AccountCollaborationService_GetCollaboratorCount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCollaboratorCountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountCollaborationServiceServer).GetCollaboratorCount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountCollaborationService_GetCollaboratorCount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountCollaborationServiceServer).GetCollaboratorCount(ctx, req.(*GetCollaboratorCountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AccountCollaborationService_CheckCollaborator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckCollaboratorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountCollaborationServiceServer).CheckCollaborator(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountCollaborationService_CheckCollaborator_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountCollaborationServiceServer).CheckCollaborator(ctx, req.(*CheckCollaboratorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AccountCollaborationService_ListUserCollaborations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListUserCollaborationsRequest)
 	if err := dec(in); err != nil {
@@ -688,7 +832,7 @@ func _AccountCollaborationService_TransferOwnership_Handler(srv interface{}, ctx
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var AccountCollaborationService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "ariand.v1.AccountCollaborationService",
+	ServiceName: "arian.v1.AccountCollaborationService",
 	HandlerType: (*AccountCollaborationServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -704,6 +848,14 @@ var AccountCollaborationService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AccountCollaborationService_ListCollaborators_Handler,
 		},
 		{
+			MethodName: "GetCollaboratorCount",
+			Handler:    _AccountCollaborationService_GetCollaboratorCount_Handler,
+		},
+		{
+			MethodName: "CheckCollaborator",
+			Handler:    _AccountCollaborationService_CheckCollaborator_Handler,
+		},
+		{
 			MethodName: "ListUserCollaborations",
 			Handler:    _AccountCollaborationService_ListUserCollaborations_Handler,
 		},
@@ -717,5 +869,5 @@ var AccountCollaborationService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "ariand/v1/account_services.proto",
+	Metadata: "arian/v1/account_services.proto",
 }

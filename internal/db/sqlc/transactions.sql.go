@@ -7,12 +7,14 @@ package sqlcdb
 
 import (
 	"context"
-	"time"
 
-	ariand "ariand/gen/go/ariand/v1"
+	arian "ariand/gen/go/arian/v1"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/shopspring/decimal"
+	"google.golang.org/genproto/googleapis/type/date"
+	"google.golang.org/genproto/googleapis/type/money"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const bulkCategorizeTransactionsForUser = `-- name: BulkCategorizeTransactionsForUser :execrows
@@ -88,8 +90,8 @@ type CategorizeTransactionAtomicParams struct {
 }
 
 type CategorizeTransactionAtomicRow struct {
-	ID        int64                       `json:"id"`
-	CatStatus ariand.CategorizationStatus `json:"cat_status"`
+	ID        int64                      `json:"id"`
+	CatStatus arian.CategorizationStatus `json:"cat_status"`
 }
 
 func (q *Queries) CategorizeTransactionAtomic(ctx context.Context, arg CategorizeTransactionAtomicParams) (CategorizeTransactionAtomicRow, error) {
@@ -136,23 +138,23 @@ RETURNING id
 `
 
 type CreateTransactionForUserParams struct {
-	EmailID         *string          `json:"email_id"`
-	AccountID       int64            `json:"account_id"`
-	TxDate          time.Time        `json:"tx_date"`
-	TxAmount        decimal.Decimal  `json:"tx_amount"`
-	TxCurrency      string           `json:"tx_currency"`
-	TxDirection     int16            `json:"tx_direction"`
-	TxDesc          *string          `json:"tx_desc"`
-	BalanceAfter    *decimal.Decimal `json:"balance_after"`
-	CategoryID      *int64           `json:"category_id"`
-	Merchant        *string          `json:"merchant"`
-	UserNotes       *string          `json:"user_notes"`
-	ForeignCurrency *string          `json:"foreign_currency"`
-	ForeignAmount   *decimal.Decimal `json:"foreign_amount"`
-	ExchangeRate    *decimal.Decimal `json:"exchange_rate"`
-	Suggestions     []string         `json:"suggestions"`
-	ReceiptID       *int64           `json:"receipt_id"`
-	UserID          uuid.UUID        `json:"user_id"`
+	EmailID         *string                `json:"email_id"`
+	AccountID       int64                  `json:"account_id"`
+	TxDate          *timestamppb.Timestamp `json:"tx_date"`
+	TxAmount        decimal.Decimal        `json:"tx_amount"`
+	TxCurrency      string                 `json:"tx_currency"`
+	TxDirection     int16                  `json:"tx_direction"`
+	TxDesc          *string                `json:"tx_desc"`
+	BalanceAfter    *decimal.Decimal       `json:"balance_after"`
+	CategoryID      *int64                 `json:"category_id"`
+	Merchant        *string                `json:"merchant"`
+	UserNotes       *string                `json:"user_notes"`
+	ForeignCurrency *string                `json:"foreign_currency"`
+	ForeignAmount   *decimal.Decimal       `json:"foreign_amount"`
+	ExchangeRate    *decimal.Decimal       `json:"exchange_rate"`
+	Suggestions     []string               `json:"suggestions"`
+	ReceiptID       *int64                 `json:"receipt_id"`
+	UserID          uuid.UUID              `json:"user_id"`
 }
 
 func (q *Queries) CreateTransactionForUser(ctx context.Context, arg CreateTransactionForUserParams) (int64, error) {
@@ -231,35 +233,35 @@ LIMIT 10
 type FindCandidateTransactionsForUserParams struct {
 	Merchant string          `json:"merchant"`
 	UserID   uuid.UUID       `json:"user_id"`
-	Date     pgtype.Date     `json:"date"`
+	Date     *date.Date      `json:"date"`
 	Total    decimal.Decimal `json:"total"`
 }
 
 type FindCandidateTransactionsForUserRow struct {
-	ID              int64                       `json:"id"`
-	EmailID         *string                     `json:"email_id"`
-	AccountID       int64                       `json:"account_id"`
-	TxDate          time.Time                   `json:"tx_date"`
-	TxAmount        decimal.Decimal             `json:"tx_amount"`
-	TxCurrency      string                      `json:"tx_currency"`
-	TxDirection     ariand.TransactionDirection `json:"tx_direction"`
-	TxDesc          *string                     `json:"tx_desc"`
-	BalanceAfter    *decimal.Decimal            `json:"balance_after"`
-	CategoryID      *int64                      `json:"category_id"`
-	CatStatus       ariand.CategorizationStatus `json:"cat_status"`
-	Merchant        *string                     `json:"merchant"`
-	UserNotes       *string                     `json:"user_notes"`
-	Suggestions     []string                    `json:"suggestions"`
-	ReceiptID       *int64                      `json:"receipt_id"`
-	ForeignCurrency *string                     `json:"foreign_currency"`
-	ForeignAmount   *decimal.Decimal            `json:"foreign_amount"`
-	ExchangeRate    *decimal.Decimal            `json:"exchange_rate"`
-	CreatedAt       time.Time                   `json:"created_at"`
-	UpdatedAt       time.Time                   `json:"updated_at"`
-	CategorySlug    *string                     `json:"category_slug"`
-	CategoryLabel   *string                     `json:"category_label"`
-	CategoryColor   *string                     `json:"category_color"`
-	MerchantScore   float32                     `json:"merchant_score"`
+	ID              int64                      `json:"id"`
+	EmailID         *string                    `json:"email_id"`
+	AccountID       int64                      `json:"account_id"`
+	TxDate          *timestamppb.Timestamp     `json:"tx_date"`
+	TxAmount        *money.Money               `json:"tx_amount"`
+	TxCurrency      string                     `json:"tx_currency"`
+	TxDirection     arian.TransactionDirection `json:"tx_direction"`
+	TxDesc          *string                    `json:"tx_desc"`
+	BalanceAfter    *money.Money               `json:"balance_after"`
+	CategoryID      *int64                     `json:"category_id"`
+	CatStatus       arian.CategorizationStatus `json:"cat_status"`
+	Merchant        *string                    `json:"merchant"`
+	UserNotes       *string                    `json:"user_notes"`
+	Suggestions     []string                   `json:"suggestions"`
+	ReceiptID       *int64                     `json:"receipt_id"`
+	ForeignCurrency *string                    `json:"foreign_currency"`
+	ForeignAmount   *money.Money               `json:"foreign_amount"`
+	ExchangeRate    *decimal.Decimal           `json:"exchange_rate"`
+	CreatedAt       *timestamppb.Timestamp     `json:"created_at"`
+	UpdatedAt       *timestamppb.Timestamp     `json:"updated_at"`
+	CategorySlug    *string                    `json:"category_slug"`
+	CategoryLabel   *string                    `json:"category_label"`
+	CategoryColor   *string                    `json:"category_color"`
+	MerchantScore   float32                    `json:"merchant_score"`
 }
 
 func (q *Queries) FindCandidateTransactionsForUser(ctx context.Context, arg FindCandidateTransactionsForUserParams) ([]FindCandidateTransactionsForUserRow, error) {
@@ -373,30 +375,30 @@ type GetTransactionForUserParams struct {
 }
 
 type GetTransactionForUserRow struct {
-	ID              int64                       `json:"id"`
-	EmailID         *string                     `json:"email_id"`
-	AccountID       int64                       `json:"account_id"`
-	TxDate          time.Time                   `json:"tx_date"`
-	TxAmount        decimal.Decimal             `json:"tx_amount"`
-	TxCurrency      string                      `json:"tx_currency"`
-	TxDirection     ariand.TransactionDirection `json:"tx_direction"`
-	TxDesc          *string                     `json:"tx_desc"`
-	BalanceAfter    *decimal.Decimal            `json:"balance_after"`
-	CategoryID      *int64                      `json:"category_id"`
-	CatStatus       ariand.CategorizationStatus `json:"cat_status"`
-	Merchant        *string                     `json:"merchant"`
-	UserNotes       *string                     `json:"user_notes"`
-	Suggestions     []string                    `json:"suggestions"`
-	ReceiptID       *int64                      `json:"receipt_id"`
-	ForeignCurrency *string                     `json:"foreign_currency"`
-	ForeignAmount   *decimal.Decimal            `json:"foreign_amount"`
-	ExchangeRate    *decimal.Decimal            `json:"exchange_rate"`
-	CreatedAt       time.Time                   `json:"created_at"`
-	UpdatedAt       time.Time                   `json:"updated_at"`
-	CategorySlug    *string                     `json:"category_slug"`
-	CategoryLabel   *string                     `json:"category_label"`
-	CategoryColor   *string                     `json:"category_color"`
-	AccountName     string                      `json:"account_name"`
+	ID              int64                      `json:"id"`
+	EmailID         *string                    `json:"email_id"`
+	AccountID       int64                      `json:"account_id"`
+	TxDate          *timestamppb.Timestamp     `json:"tx_date"`
+	TxAmount        *money.Money               `json:"tx_amount"`
+	TxCurrency      string                     `json:"tx_currency"`
+	TxDirection     arian.TransactionDirection `json:"tx_direction"`
+	TxDesc          *string                    `json:"tx_desc"`
+	BalanceAfter    *money.Money               `json:"balance_after"`
+	CategoryID      *int64                     `json:"category_id"`
+	CatStatus       arian.CategorizationStatus `json:"cat_status"`
+	Merchant        *string                    `json:"merchant"`
+	UserNotes       *string                    `json:"user_notes"`
+	Suggestions     []string                   `json:"suggestions"`
+	ReceiptID       *int64                     `json:"receipt_id"`
+	ForeignCurrency *string                    `json:"foreign_currency"`
+	ForeignAmount   *money.Money               `json:"foreign_amount"`
+	ExchangeRate    *decimal.Decimal           `json:"exchange_rate"`
+	CreatedAt       *timestamppb.Timestamp     `json:"created_at"`
+	UpdatedAt       *timestamppb.Timestamp     `json:"updated_at"`
+	CategorySlug    *string                    `json:"category_slug"`
+	CategoryLabel   *string                    `json:"category_label"`
+	CategoryColor   *string                    `json:"category_color"`
+	AccountName     string                     `json:"account_name"`
 }
 
 func (q *Queries) GetTransactionForUser(ctx context.Context, arg GetTransactionForUserParams) (GetTransactionForUserRow, error) {
@@ -464,54 +466,56 @@ WHERE (a.owner_id = $1::uuid OR au.user_id IS NOT NULL)
   AND ($13::char(3) IS NULL OR t.tx_currency = $13::char(3))
   AND ($14::time IS NULL OR t.tx_date::time >= $14::time)
   AND ($15::time IS NULL OR t.tx_date::time <= $15::time)
+  AND ($16::boolean IS NULL OR ($16::boolean = true AND t.category_id IS NULL))
 ORDER BY t.tx_date DESC, t.id DESC
-LIMIT COALESCE($16::int, 100)
+LIMIT COALESCE($17::int, 100)
 `
 
 type ListTransactionsForUserParams struct {
-	UserID     uuid.UUID        `json:"user_id"`
-	CursorDate *time.Time       `json:"cursor_date"`
-	CursorID   *int64           `json:"cursor_id"`
-	Start      *time.Time       `json:"start"`
-	End        *time.Time       `json:"end"`
-	AmountMin  *decimal.Decimal `json:"amount_min"`
-	AmountMax  *decimal.Decimal `json:"amount_max"`
-	Direction  *int16           `json:"direction"`
-	AccountIds []int64          `json:"account_ids"`
-	Categories []string         `json:"categories"`
-	MerchantQ  *string          `json:"merchant_q"`
-	DescQ      *string          `json:"desc_q"`
-	Currency   *string          `json:"currency"`
-	TodStart   pgtype.Time      `json:"tod_start"`
-	TodEnd     pgtype.Time      `json:"tod_end"`
-	Limit      *int32           `json:"limit"`
+	UserID        uuid.UUID              `json:"user_id"`
+	CursorDate    *timestamppb.Timestamp `json:"cursor_date"`
+	CursorID      *int64                 `json:"cursor_id"`
+	Start         *timestamppb.Timestamp `json:"start"`
+	End           *timestamppb.Timestamp `json:"end"`
+	AmountMin     *decimal.Decimal       `json:"amount_min"`
+	AmountMax     *decimal.Decimal       `json:"amount_max"`
+	Direction     *int16                 `json:"direction"`
+	AccountIds    []int64                `json:"account_ids"`
+	Categories    []string               `json:"categories"`
+	MerchantQ     *string                `json:"merchant_q"`
+	DescQ         *string                `json:"desc_q"`
+	Currency      *string                `json:"currency"`
+	TodStart      pgtype.Time            `json:"tod_start"`
+	TodEnd        pgtype.Time            `json:"tod_end"`
+	Uncategorized *bool                  `json:"uncategorized"`
+	Limit         *int32                 `json:"limit"`
 }
 
 type ListTransactionsForUserRow struct {
-	ID              int64                       `json:"id"`
-	EmailID         *string                     `json:"email_id"`
-	AccountID       int64                       `json:"account_id"`
-	TxDate          time.Time                   `json:"tx_date"`
-	TxAmount        decimal.Decimal             `json:"tx_amount"`
-	TxCurrency      string                      `json:"tx_currency"`
-	TxDirection     ariand.TransactionDirection `json:"tx_direction"`
-	TxDesc          *string                     `json:"tx_desc"`
-	BalanceAfter    *decimal.Decimal            `json:"balance_after"`
-	CategoryID      *int64                      `json:"category_id"`
-	CatStatus       ariand.CategorizationStatus `json:"cat_status"`
-	Merchant        *string                     `json:"merchant"`
-	UserNotes       *string                     `json:"user_notes"`
-	Suggestions     []string                    `json:"suggestions"`
-	ReceiptID       *int64                      `json:"receipt_id"`
-	ForeignCurrency *string                     `json:"foreign_currency"`
-	ForeignAmount   *decimal.Decimal            `json:"foreign_amount"`
-	ExchangeRate    *decimal.Decimal            `json:"exchange_rate"`
-	CreatedAt       time.Time                   `json:"created_at"`
-	UpdatedAt       time.Time                   `json:"updated_at"`
-	CategorySlug    *string                     `json:"category_slug"`
-	CategoryLabel   *string                     `json:"category_label"`
-	CategoryColor   *string                     `json:"category_color"`
-	AccountName     string                      `json:"account_name"`
+	ID              int64                      `json:"id"`
+	EmailID         *string                    `json:"email_id"`
+	AccountID       int64                      `json:"account_id"`
+	TxDate          *timestamppb.Timestamp     `json:"tx_date"`
+	TxAmount        *money.Money               `json:"tx_amount"`
+	TxCurrency      string                     `json:"tx_currency"`
+	TxDirection     arian.TransactionDirection `json:"tx_direction"`
+	TxDesc          *string                    `json:"tx_desc"`
+	BalanceAfter    *money.Money               `json:"balance_after"`
+	CategoryID      *int64                     `json:"category_id"`
+	CatStatus       arian.CategorizationStatus `json:"cat_status"`
+	Merchant        *string                    `json:"merchant"`
+	UserNotes       *string                    `json:"user_notes"`
+	Suggestions     []string                   `json:"suggestions"`
+	ReceiptID       *int64                     `json:"receipt_id"`
+	ForeignCurrency *string                    `json:"foreign_currency"`
+	ForeignAmount   *money.Money               `json:"foreign_amount"`
+	ExchangeRate    *decimal.Decimal           `json:"exchange_rate"`
+	CreatedAt       *timestamppb.Timestamp     `json:"created_at"`
+	UpdatedAt       *timestamppb.Timestamp     `json:"updated_at"`
+	CategorySlug    *string                    `json:"category_slug"`
+	CategoryLabel   *string                    `json:"category_label"`
+	CategoryColor   *string                    `json:"category_color"`
+	AccountName     string                     `json:"account_name"`
 }
 
 func (q *Queries) ListTransactionsForUser(ctx context.Context, arg ListTransactionsForUserParams) ([]ListTransactionsForUserRow, error) {
@@ -531,6 +535,7 @@ func (q *Queries) ListTransactionsForUser(ctx context.Context, arg ListTransacti
 		arg.Currency,
 		arg.TodStart,
 		arg.TodEnd,
+		arg.Uncategorized,
 		arg.Limit,
 	)
 	if err != nil {
@@ -650,23 +655,23 @@ RETURNING account_id
 `
 
 type UpdateTransactionParams struct {
-	EmailID         *string          `json:"email_id"`
-	TxDate          *time.Time       `json:"tx_date"`
-	TxAmount        *decimal.Decimal `json:"tx_amount"`
-	TxCurrency      *string          `json:"tx_currency"`
-	TxDirection     *int16           `json:"tx_direction"`
-	TxDesc          *string          `json:"tx_desc"`
-	CategoryID      *int64           `json:"category_id"`
-	Merchant        *string          `json:"merchant"`
-	UserNotes       *string          `json:"user_notes"`
-	ForeignCurrency *string          `json:"foreign_currency"`
-	ForeignAmount   *decimal.Decimal `json:"foreign_amount"`
-	ExchangeRate    *decimal.Decimal `json:"exchange_rate"`
-	Suggestions     []string         `json:"suggestions"`
-	ReceiptID       *int64           `json:"receipt_id"`
-	CatStatus       *int16           `json:"cat_status"`
-	ID              int64            `json:"id"`
-	UserID          uuid.UUID        `json:"user_id"`
+	EmailID         *string                `json:"email_id"`
+	TxDate          *timestamppb.Timestamp `json:"tx_date"`
+	TxAmount        *decimal.Decimal       `json:"tx_amount"`
+	TxCurrency      *string                `json:"tx_currency"`
+	TxDirection     *int16                 `json:"tx_direction"`
+	TxDesc          *string                `json:"tx_desc"`
+	CategoryID      *int64                 `json:"category_id"`
+	Merchant        *string                `json:"merchant"`
+	UserNotes       *string                `json:"user_notes"`
+	ForeignCurrency *string                `json:"foreign_currency"`
+	ForeignAmount   *decimal.Decimal       `json:"foreign_amount"`
+	ExchangeRate    *decimal.Decimal       `json:"exchange_rate"`
+	Suggestions     []string               `json:"suggestions"`
+	ReceiptID       *int64                 `json:"receipt_id"`
+	CatStatus       *int16                 `json:"cat_status"`
+	ID              int64                  `json:"id"`
+	UserID          uuid.UUID              `json:"user_id"`
 }
 
 func (q *Queries) UpdateTransaction(ctx context.Context, arg UpdateTransactionParams) (int64, error) {
