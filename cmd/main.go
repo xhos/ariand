@@ -6,6 +6,7 @@ import (
 	"ariand/internal/config"
 	"ariand/internal/db"
 	grpcServer "ariand/internal/grpc"
+	"ariand/internal/grpc/interceptors"
 	"ariand/internal/service"
 	"context"
 	"net"
@@ -61,7 +62,21 @@ func main() {
 			return
 		}
 
-		s := grpc.NewServer()
+		// Setup interceptors
+		unaryInterceptor, streamInterceptor := interceptors.SetupInterceptors(interceptors.InterceptorConfig{
+			Logger:            logger.WithPrefix("grpc"),
+			APIKey:            cfg.APIKey,
+			EnableAuth:        true,
+			EnableRateLimit:   true,
+			RateLimitRPS:      1.0,        // 1 request per second for unauthenticated requests
+			RateLimitCapacity: 5,          // burst capacity
+			PublicMethods:     []string{}, // Add health check or other public methods here if needed
+		})
+
+		s := grpc.NewServer(
+			grpc.UnaryInterceptor(unaryInterceptor),
+			grpc.StreamInterceptor(streamInterceptor),
+		)
 		grpcSrv := grpcServer.NewServer(services, logger.WithPrefix("grpc"))
 		grpcSrv.RegisterServices(s)
 		reflection.Register(s)

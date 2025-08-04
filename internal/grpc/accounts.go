@@ -1,87 +1,223 @@
 package grpc
 
 import (
-	pb "ariand/gen/go/ariand/v1"
+	pb "ariand/gen/go/arian/v1"
+	sqlc "ariand/internal/db/sqlc"
 	"context"
 
+	"google.golang.org/genproto/googleapis/type/date"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func (s *Server) ListAccounts(ctx context.Context, _ *pb.ListAccountsRequest) (*pb.ListAccountsResponse, error) {
-	accounts, err := s.services.Accounts.List(ctx)
+// ==================== ACCOUNT SERVICE ====================
+
+func (s *Server) ListAccounts(ctx context.Context, req *pb.ListAccountsRequest) (*pb.ListAccountsResponse, error) {
+	userID, err := parseUUID(req.GetUserId())
+	if err != nil {
+		return nil, err
+	}
+
+	accounts, err := s.services.Accounts.ListForUser(ctx, userID)
 	if err != nil {
 		return nil, handleError(err)
 	}
 
-	out := make([]*pb.Account, len(accounts))
-	for i := range accounts {
-		out[i] = toProtoAccount(&accounts[i])
+	pbAccounts := make([]*pb.Account, len(accounts))
+	for i, account := range accounts {
+		pbAccounts[i] = toProtoAccount(&account)
 	}
-	return &pb.ListAccountsResponse{Accounts: out}, nil
+
+	return &pb.ListAccountsResponse{
+		Accounts: pbAccounts,
+	}, nil
 }
 
-func (s *Server) GetAccount(ctx context.Context, req *pb.GetAccountRequest) (*pb.Account, error) {
+func (s *Server) GetAccount(ctx context.Context, req *pb.GetAccountRequest) (*pb.GetAccountResponse, error) {
+	userID, err := parseUUID(req.GetUserId())
+	if err != nil {
+		return nil, err
+	}
+
 	if req.GetId() <= 0 {
-		return nil, status.Error(codes.InvalidArgument, "account id is required")
+		return nil, status.Error(codes.InvalidArgument, "account id must be positive")
 	}
-	account, err := s.services.Accounts.Get(ctx, req.GetId())
+
+	account, err := s.services.Accounts.GetForUser(ctx, sqlc.GetAccountForUserParams{
+		UserID: userID,
+		ID:     req.GetId(),
+	})
 	if err != nil {
 		return nil, handleError(err)
 	}
-	return toProtoAccount(account), nil
+
+	return &pb.GetAccountResponse{
+		Account: toProtoAccountFromGetRow(account),
+	}, nil
 }
 
-func (s *Server) CreateAccount(ctx context.Context, req *pb.CreateAccountRequest) (*pb.Account, error) {
-	if req.GetName() == "" || req.GetBank() == "" {
-		return nil, status.Error(codes.InvalidArgument, "name and bank are required")
+func (s *Server) CreateAccount(ctx context.Context, req *pb.CreateAccountRequest) (*pb.CreateAccountResponse, error) {
+	if req.GetName() == "" {
+		return nil, status.Error(codes.InvalidArgument, "name is required")
+	}
+	if req.GetBank() == "" {
+		return nil, status.Error(codes.InvalidArgument, "bank is required")
 	}
 	if req.GetAnchorBalance() == nil {
 		return nil, status.Error(codes.InvalidArgument, "anchor_balance is required")
 	}
-	domainAcc := fromProtoCreateAccountRequest(req)
-	createdAcc, err := s.services.Accounts.Create(ctx, domainAcc)
+
+	params, err := createAccountParamsFromProto(req)
+	if err != nil {
+		return nil, err
+	}
+
+	account, err := s.services.Accounts.Create(ctx, params)
 	if err != nil {
 		return nil, handleError(err)
 	}
-	return toProtoAccount(createdAcc), nil
+
+	return &pb.CreateAccountResponse{
+		Account: toProtoAccountFromModel(account),
+	}, nil
+}
+
+func (s *Server) UpdateAccount(ctx context.Context, req *pb.UpdateAccountRequest) (*pb.UpdateAccountResponse, error) {
+	if req.GetId() <= 0 {
+		return nil, status.Error(codes.InvalidArgument, "account id must be positive")
+	}
+
+	// build update params based on field mask
+	params := sqlc.UpdateAccountParams{
+		ID: req.GetId(),
+	}
+
+	// apply updates based on what's provided
+	if req.Name != nil {
+		params.Name = req.Name
+	}
+	if req.Bank != nil {
+		params.Bank = req.Bank
+	}
+	if req.AccountType != nil {
+		accountType := int16(*req.AccountType)
+		params.AccountType = &accountType
+	}
+	if req.Alias != nil {
+		params.Alias = req.Alias
+	}
+	if req.AnchorDate != nil {
+		// Convert timestamppb.Timestamp to date.Date
+		t := req.AnchorDate.AsTime()
+		params.AnchorDate = &date.Date{
+			Year:  int32(t.Year()),
+			Month: int32(t.Month()),
+			Day:   int32(t.Day()),
+		}
+	}
+	if req.AnchorBalance != nil {
+		balance := moneyToDecimal(req.AnchorBalance)
+		currency := req.AnchorBalance.CurrencyCode
+		params.AnchorBalance = balance
+		params.AnchorCurrency = &currency
+	}
+
+	account, err := s.services.Accounts.Update(ctx, params)
+	if err != nil {
+		return nil, handleError(err)
+	}
+
+	return &pb.UpdateAccountResponse{
+		Account: toProtoAccountFromModel(account),
+	}, nil
 }
 
 func (s *Server) DeleteAccount(ctx context.Context, req *pb.DeleteAccountRequest) (*pb.DeleteAccountResponse, error) {
-	if req.GetId() <= 0 {
-		return nil, status.Error(codes.InvalidArgument, "account id is required")
+	userID, err := parseUUID(req.GetUserId())
+	if err != nil {
+		return nil, err
 	}
-	if err := s.services.Accounts.Delete(ctx, req.GetId()); err != nil {
+
+	if req.GetId() <= 0 {
+		return nil, status.Error(codes.InvalidArgument, "account id must be positive")
+	}
+
+	err = s.services.Accounts.DeleteForUser(ctx, sqlc.DeleteAccountForUserParams{
+		UserID: userID,
+		ID:     req.GetId(),
+	})
+	if err != nil {
 		return nil, handleError(err)
 	}
-	return &pb.DeleteAccountResponse{}, nil
+
+	return &pb.DeleteAccountResponse{
+		AffectedRows: 1, // Always 1 for single delete
+	}, nil
 }
 
-func (s *Server) SetAnchor(ctx context.Context, req *pb.SetAnchorRequest) (*pb.SetAnchorResponse, error) {
+func (s *Server) SetAccountAnchor(ctx context.Context, req *pb.SetAccountAnchorRequest) (*pb.SetAccountAnchorResponse, error) {
 	if req.GetId() <= 0 {
-		return nil, status.Error(codes.InvalidArgument, "account id is required")
+		return nil, status.Error(codes.InvalidArgument, "account id must be positive")
 	}
 	if req.GetBalance() == nil {
 		return nil, status.Error(codes.InvalidArgument, "balance is required")
 	}
 
-	balance, currency := moneyToFloat64(req.GetBalance())
+	balance := moneyToDecimal(req.GetBalance())
+	currency := req.GetBalance().CurrencyCode
 
-	if err := s.services.Accounts.SetAnchor(ctx, req.GetId(), balance, currency); err != nil {
-		return nil, handleError(err)
-	}
-	return &pb.SetAnchorResponse{}, nil
-}
-
-// NOTE: matches the renamed RPC in the proto
-func (s *Server) GetAccountBalance(ctx context.Context, req *pb.GetAccountBalanceRequest) (*pb.GetAccountBalanceResponse, error) {
-	if req.GetId() <= 0 {
-		return nil, status.Error(codes.InvalidArgument, "account id is required")
-	}
-	balance, currency, err := s.services.Accounts.Balance(ctx, req.GetId())
+	// for anchor setting, we need to update the account
+	// note: this method doesn't require user ownership check in the original proto
+	_, err := s.services.Accounts.Update(ctx, sqlc.UpdateAccountParams{
+		ID:             req.GetId(),
+		AnchorBalance:  balance,
+		AnchorCurrency: &currency,
+	})
 	if err != nil {
 		return nil, handleError(err)
 	}
 
-	return &pb.GetAccountBalanceResponse{Balance: float64ToMoney(balance, currency)}, nil
+	return &pb.SetAccountAnchorResponse{
+		AffectedRows: 1,
+	}, nil
+}
+
+func (s *Server) GetAccountBalance(ctx context.Context, req *pb.GetAccountBalanceRequest) (*pb.GetAccountBalanceResponse, error) {
+	if req.GetId() <= 0 {
+		return nil, status.Error(codes.InvalidArgument, "account id must be positive")
+	}
+
+	balance, err := s.services.Accounts.GetBalance(ctx, req.GetId())
+	if err != nil {
+		return nil, handleError(err)
+	}
+
+	return &pb.GetAccountBalanceResponse{
+		Balance: balance,
+	}, nil
+}
+
+func (s *Server) GetAccountsCount(ctx context.Context, req *pb.GetAccountsCountRequest) (*pb.GetAccountsCountResponse, error) {
+	userID, err := parseUUID(req.GetUserId())
+	if err != nil {
+		return nil, err
+	}
+
+	count, err := s.services.Accounts.GetUserAccountsCount(ctx, userID)
+	if err != nil {
+		return nil, handleError(err)
+	}
+
+	return &pb.GetAccountsCountResponse{
+		Count: count,
+	}, nil
+}
+
+func (s *Server) SyncAccountBalances(ctx context.Context, req *pb.SyncAccountBalancesRequest) (*pb.SyncAccountBalancesResponse, error) {
+	// this is a placeholder - the actual implementation would depend on
+	// how balance syncing is supposed to work in the business logic
+	s.log.Info("SyncAccountBalances called", "account_id", req.GetAccountId())
+
+	// for now, just return success without doing anything
+	return &pb.SyncAccountBalancesResponse{}, nil
 }
